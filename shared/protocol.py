@@ -202,7 +202,12 @@ def _merge(defaults: dict, overrides: dict, path: str = "") -> dict:
         if key not in defaults:
             log.warning("config: unknown setting '%s%s' ignored", path, key)
             continue
-        if isinstance(defaults[key], dict) and isinstance(value, dict):
+        if defaults[key] == {} and isinstance(value, dict):
+            # An empty dict in the defaults is a free-form section (for example
+            # decider.options): take whatever keys the file gives.
+            merged[key] = {k: copy.deepcopy(v) for k, v in value.items()
+                           if not k.startswith("_")}
+        elif isinstance(defaults[key], dict) and isinstance(value, dict):
             merged[key] = _merge(defaults[key], value, f"{path}{key}.")
         else:
             merged[key] = value

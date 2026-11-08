@@ -43,6 +43,7 @@ DEFAULTS = {
         "url": "",                    # http backend: the service's URL
         "timeout_s": 2.0,             # http backend: how long to wait for an answer
         "dummy_throttle": 0.0,        # dummy backend: value sent to all four motors
+        "options": {},                # python backend: passed to the module's configure(options)
     },
 }
 

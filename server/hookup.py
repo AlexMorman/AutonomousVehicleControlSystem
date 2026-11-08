@@ -160,6 +160,9 @@ def configure(cfg: dict) -> str:
         func = getattr(module, func_name, None)
         if not callable(func):
             raise SystemExit(f"{module_name} has no function called {func_name!r}")
+        setup = getattr(module, "configure", None)
+        if callable(setup):  # optional: hand the module its own settings once, at startup
+            setup(dict(cfg.get("options") or {}))
         _backend = func
         return f"python function {target}"
 

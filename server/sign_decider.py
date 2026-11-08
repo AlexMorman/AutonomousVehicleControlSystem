@@ -1,4 +1,6 @@
-"""Connects the sign classifier (cnn_api_client.py) to the server.
+"""TEMPORARY: connects the sign classifier (cnn_api_client.py) to the server.
+
+Stands in for the real image pipeline until that plugs into hookup.py.
 
 For every frame: run classify() -> look up the action for the detected sign ->
 send the motor values to the car.
@@ -7,7 +9,8 @@ Setup
     1. Put this file and cnn_api_client.py in the same folder as server.py.
     2. On the server:  pip install requests numpy opencv-python-headless
     3. In server_config.json:
-           "decider": {"backend": "python", "target": "sign_decider:decide"}
+           "decider": {"backend": "python", "target": "sign_decider:decide",
+                       "options": {"cnn_api_url": "<the CNN API's URL>"}}
 
 EDIT THE ACTIONS TABLE BELOW: its keys must match the class names the
 classifier returns, exactly. Any sign not listed gets UNKNOWN_SIGN.
@@ -19,8 +22,13 @@ action that was sent.
 
 import time
 
+import cnn_api_client
 import hookup
-from cnn_api_client import classify
+
+
+def configure(options):
+    """Called once by hookup.configure() with decider.options from server_config.json."""
+    cnn_api_client.configure(options.get("cnn_api_url", ""))
 
 # Actions: (left-side value, right-side value), each from -1 to 1.
 # The car converts these to motor power using its min/max_throttle settings.
@@ -52,7 +60,7 @@ def decide(image_bytes, meta):
     if meta["seq"] == 1:  # new connection: forget the previous drive
         _last_sign, _last_seen = None, 0.0
 
-    sign, confidence = classify(hookup.decode_image(image_bytes, meta))
+    sign, confidence = cnn_api_client.classify(hookup.decode_image(image_bytes, meta))
     now = time.monotonic()
 
     if sign is not None and confidence >= MIN_CONFIDENCE:

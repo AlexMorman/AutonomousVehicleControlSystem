@@ -23,6 +23,11 @@
     "target": "sign_decider:decide",
     "url": "",
     "timeout_s": 2.0,
-    "dummy_throttle": 1.0
+    "dummy_throttle": 1.0,
+    "_options": "Passed to the python module's configure(options). Free-form; the module decides what it needs.",
+    "options": {
+      "_cnn_api_url": "Temporary sign_decider only: the remote CNN API endpoint. Ask the CNN's owner; not kept in git.",
+      "cnn_api_url": ""
+    }
   }
 }
