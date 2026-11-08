@@ -23,12 +23,12 @@ whether it was a fresh detection, a held one, unknown, or no sign.
 
 import time
 
-import cnn_api_client
 import hookup
 
 
 def configure(options):
     """Called once by hookup.configure() with decider.options from server_config.json."""
+    import cnn_api_client  # imported here so server/pipeline/ can reuse the rules below without it
     cnn_api_client.configure(options.get("cnn_api_url", ""))
 
 
@@ -58,11 +58,19 @@ _last_seen = 0.0
 
 
 def decide(image_bytes, meta):
+    """hookup target "sign_decider:decide": classify with the remote CNN API, then apply the rules."""
+    import cnn_api_client
+    sign, confidence = cnn_api_client.classify(hookup.decode_image(image_bytes, meta))
+    return decide_from_sign(sign, confidence, meta)
+
+
+def decide_from_sign(sign, confidence, meta):
+    """The rules on their own: (sign or None, confidence) -> a hookup decision dict.
+    Also used by server/pipeline/ until the image pipeline has its own."""
     global _last_sign, _last_seen
     if meta["seq"] == 1:  # new connection: forget the previous drive
         _last_sign, _last_seen = None, 0.0
 
-    sign, confidence = cnn_api_client.classify(hookup.decode_image(image_bytes, meta))
     now = time.monotonic()
 
     if sign is not None and confidence >= MIN_CONFIDENCE:

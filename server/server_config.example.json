@@ -20,14 +20,15 @@
   "decider": {
     "_comment": "backend: dummy, python or http. See the top of hookup.py.",
     "backend": "python",
-    "target": "sign_decider:decide",
+    "_target": "pipeline:decide = the local image pipeline in server/pipeline/. sign_decider:decide = the old remote CNN API (needs options.cnn_api_url).",
+    "target": "pipeline:decide",
     "url": "",
     "timeout_s": 2.0,
     "_dummy_throttle": "dummy backend: 1.0 = all wheels at full configured speed as soon as the car connects.",
     "dummy_throttle": 1.0,
     "_options": "Passed to the python module's configure(options). Free-form; the module decides what it needs.",
     "options": {
-      "_cnn_api_url": "Temporary sign_decider only: the remote CNN API endpoint. Ask the CNN's owner; not kept in git.",
+      "_cnn_api_url": "Only for target sign_decider:decide: the remote CNN API endpoint. Ask the CNN's owner; not kept in git.",
       "cnn_api_url": ""
     }
   }

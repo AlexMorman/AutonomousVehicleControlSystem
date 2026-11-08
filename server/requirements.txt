@@ -1,8 +1,19 @@
 # The server scripts themselves use only the standard library.
-# These are for hookup.decode_image(), sign_decider.py and cnn_api_client.py.
+# These are for hookup.decode_image(), the image pipeline (server/pipeline/),
+# and the old remote-API path (sign_decider.py + cnn_api_client.py).
 # On Debian 13 the easiest route is apt: python3-requests python3-numpy python3-opencv
 # Or in a venv:  pip install -r requirements.txt
 # Versions are not pinned yet; record the working ones with: pip freeze
 requests
 numpy
 opencv-python-headless
+
+# Image pipeline (server/pipeline/sign_cnn.py). Install torch from PyTorch's
+# CPU-only index first; the default PyPI build bundles NVIDIA GPU libraries
+# (about 5 GB) that a laptop without an NVIDIA GPU can't use:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# The detector was trained with ultralytics 8.4.175; 8.4.208 was also tested.
+torch
+torchvision
+ultralytics>=8.4.175
+Pillow
