@@ -27,6 +27,8 @@ section of server_config.json:
      called once at startup with the free-form "options" dict from the
      decider section of server_config.json, so the module's own settings
      (model path, thresholds, URLs) can live there instead of in code.
+     Optional: if the module defines __version__ (a string), it is written
+     to every recording's session.json as "decider_version".
 
   2. "backend": "http"     Your code runs as a separate service.
      Set "url" to its endpoint, for example "http://127.0.0.1:8000/decide".
@@ -168,12 +170,18 @@ def decode_image(image_bytes: bytes, meta: dict):
 # --------------------------------------------------------------------------
 
 _backend = None
+_version = None  # the python module's __version__, recorded in each session.json
 _CONTENT_TYPES = {"jpeg": "image/jpeg", "png": "image/png", "raw": "application/octet-stream"}
+
+
+def decider_version():
+    """The python decider module's __version__ (None if it has none)."""
+    return _version
 
 
 def configure(cfg: dict) -> str:
     """Set up the backend named in the config. Returns a description for the log."""
-    global _backend
+    global _backend, _version
     kind = cfg.get("backend", "dummy")
 
     if kind == "dummy":
@@ -196,7 +204,8 @@ def configure(cfg: dict) -> str:
         if callable(setup):  # optional: hand the module its own settings once, at startup
             setup(dict(cfg.get("options") or {}))
         _backend = func
-        return f"python function {target}"
+        _version = getattr(module, "__version__", None)
+        return f"python function {target}" + (f" (version {_version})" if _version else "")
 
     if kind == "http":
         url = cfg.get("url", "")

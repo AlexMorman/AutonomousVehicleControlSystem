@@ -135,6 +135,7 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str) -> No
                                    {"decider": cfg["decider"]["backend"],
                                     "decider_target": cfg["decider"]["target"]
                                     if cfg["decider"]["backend"] == "python" else None,
+                                    "decider_version": hookup.decider_version(),
                                     "protocol_version": P.PROTOCOL_VERSION})
         log.info("recording to %s", recorder.dir)
 
@@ -178,8 +179,9 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str) -> No
                                   "label": decision.label, "score": decision.score,
                                   "motors": decision.motors})
             frames += 1
-            log.debug("frame %d: %s (%.2f) %s, decide %.0f ms", meta["seq"],
-                      decision.label, decision.score, decision.motors, decide_ms)
+            log.debug("frame %d: %s (%.2f) %s, decide %.0f ms%s", meta["seq"],
+                      decision.label, decision.score, decision.motors, decide_ms,
+                      f", details {json.dumps(decision.details)}" if decision.details else "")
             if recorder:
                 recorder.record(image, meta, decision, decide_ms, error,
                                 header.get("last_rtt_ms"))
