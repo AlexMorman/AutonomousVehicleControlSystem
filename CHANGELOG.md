@@ -1,5 +1,74 @@
 # Changelog
 
+## 2026-11-07, fourth round: manual tests and the pipeline's home
+
+Decisions recorded in this round:
+- The threat model covers only physical-world perturbations, so the
+  network is out of scope.
+- The power settings are fixed for this one car.
+- The Pi prints to the console only and writes nothing to disk.
+- The example config's dummy mode runs at full speed on purpose.
+- The pipeline will live in `server/pipeline/`.
+
+### Add two manual hardware tests in pi/tests/
+
+- `pi/tests/wheels_full_speed.py`: after a 3 s warning, spins each wheel in
+  turn (front_left, front_right, rear_left, rear_right) at throttle 1.0,
+  2 s each (`--seconds`). Wiring and reverse flags come from
+  `pi_config.json`, so each wheel should turn forward. For each wheel it
+  prints the motor name, terminal and whether the config reverses it. It
+  ignores `max_throttle` on purpose. Ctrl+C and kill stop all motors.
+- `pi/tests/photo_to_server.py`: takes one photo after 10 warm-up frames,
+  using the configured camera settings, and sends it as a normal frame,
+  with the same handshake and password as `pi_client.py`. It prints the
+  photo size, the server's label, score and motor command (not applied),
+  and the response time. It waits up to 15 s (`--timeout`). Wrong password,
+  busy server, timeouts and connection problems each get a one-line
+  message. It writes nothing on the Pi. The server records the frame as
+  usual.
+- Neither file name starts with `test_`, so pytest never runs them.
+- Tested with a stand-in motor library (each terminal received ±1.0 in
+  order, with M1 and M4 reversed) and with the test-pattern camera against
+  a real server running a fake pipeline package. A normal answer, a wrong
+  password and a busy server all behaved as described.
+
+### Add server/pipeline/ and record the pipeline's version per session
+
+- `server/pipeline/README.md`: where the pipeline goes (a package with
+  `decide`, optional `configure` and `__version__`), the config to point at
+  it (`"target": "pipeline:decide"`), and the logging and timing notes.
+- `server/hookup.py`:
+  - Stores the python decider module's `__version__`, if it has one.
+    `decider_version()` returns it, and the startup log line shows it.
+  - Docstring documents `__version__`.
+- `server/server.py`:
+  - Every `session.json` gains `decider_version`.
+  - `--verbose` frame lines now include `details` when present.
+- Tested: a fake `pipeline` package with `__version__ = "0.1-test"` showed
+  up in the startup log and in `session.json`, and its details in the
+  verbose log.
+
+### Update docs for this round's decisions
+
+- `README.md`:
+  - Layout table lists `pi/tests/` and `server/pipeline/`.
+  - New "Manual tests" section.
+  - Pipeline steps point to `server/pipeline/` and mention `__version__`.
+  - Configuration now states the power spec in one line: a command of 1.0
+    means 60% power to motors 1–4, with motors 1 and 4 reversed.
+  - The dummy backend's full-speed behavior is spelled out.
+- `server/server_config.example.json`: a comment next to `dummy_throttle`
+  saying 1.0 runs all wheels at full configured speed as soon as the car
+  connects. The value is unchanged.
+- `docs/KNOWN_ISSUES.md`:
+  - The encryption/single-car and automated-tests items moved to
+    "Accepted", together with the threat-model scope, fixed power settings
+    and console-only Pi.
+  - The pipeline's home and version recording are listed under "Resolved".
+  - Items renumbered.
+- `CHANGELOG.md`: this section.
+
+
 ## 2026-11-07, third round: removing runtime traces
 
 ### History rewritten (before the repository was first pushed)

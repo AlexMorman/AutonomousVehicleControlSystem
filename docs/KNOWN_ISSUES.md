@@ -55,18 +55,13 @@ Section 2 covers the temporary stand-in (`sign_decider.py` +
     or `server_config.json`, the scripts run on built-in defaults (server
     host 192.168.1.50, placeholder password) and don't say so.
     `wheel_test.py` does warn.
-11. **No automated tests.** The full loop runs with no hardware (test-pattern
-    camera, dry-run motors, dummy decider), which makes a good first pytest
-    end-to-end test, together with a fake pipeline module.
-12. **The laptop's IP changes every session**, so `server.host` in
+11. **The laptop's IP changes every session**, so `server.host` in
     `pi_config.json` has to be edited each time. A `.local` hostname was
     considered and rejected (it advertises the laptop on every network it
     joins).
-13. **Recordings are never cleaned up**, and a connection that sends no frames
+12. **Recordings are never cleaned up**, and a connection that sends no frames
     still creates an empty session folder.
-14. **Traffic is not encrypted, and only one car can connect at a time.**
-    Both are accepted for the proof of concept.
-15. **The Pi's and server's clocks aren't synchronized**, so comparing
+13. **The Pi's and server's clocks aren't synchronized**, so comparing
     `capture_time` against `received_time` is meaningless.
 
 ## Accepted (not going to fix)
@@ -78,6 +73,18 @@ hard reset of that machine is acceptable.
   Pi is then refused as `busy` until the server restarts.
 - A native crash or running out of memory in the pipeline takes the server
   down (Python exceptions are still caught, and the car gets a stop).
+- **The network is out of scope.** The threat model covers only physical-world
+  perturbations (for example altered signs). Traffic between the car and the
+  laptop is unencrypted, and frames and commands aren't authenticated after
+  the password check. That's accepted.
+- Only one car can connect, and the power settings in `pi_config.json` are
+  fixed for this one car.
+- The Pi only prints to the console and writes nothing to disk, to avoid
+  unnecessary SD-card writes. Its safety stops and reconnects are therefore
+  only visible in the terminal while it runs. (The one exception is
+  `pi_client.py --test-camera`, which saves a single photo when asked to.)
+- No automated test suite. The two manual hardware tests in `pi/tests/` are
+  enough.
 - No session start/end hooks: the pipeline handles the frame sequence itself
   using `meta["seq"]` (which restarts at 1 on every reconnect) and
   `meta["capture_time"]`.
@@ -95,6 +102,9 @@ hard reset of that machine is acceptable.
   the example config.
 - **`wheel_test.py` ignored the config.** It now reads the wiring, reverse
   flags and I2C address.
+- **There was no home or version record for the pipeline.** It now goes in
+  `server/pipeline/`, and its `__version__` is written to every
+  `session.json`.
 - **It was unknown whether the Pi uses `~/carlink-venv`.** Confirmed: it
   does.
 - Dropped by decision (2026-11-07): camera resolution, testing models

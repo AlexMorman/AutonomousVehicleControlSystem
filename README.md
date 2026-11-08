@@ -27,9 +27,11 @@ CNN is the bottleneck; see [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 | Path | Runs on | What it is |
 |---|---|---|
 | `pi/pi_client.py` | Pi | Car side: camera thread, motor control with safety stop, auto-reconnecting client. Test modes `--test-camera`, `--test-motors`, `--dry-run`. |
-| `pi/wheel_test.py` | Pi | Standalone motor test. Spins chosen Bonnet terminals for a few seconds. |
+| `pi/wheel_test.py` | Pi | Motor test: spins chosen motors for a few seconds, using the config's wiring. |
+| `pi/tests/` | Pi | Two manual hardware tests: every wheel at full power, and one photo sent to the server. |
 | `pi/pi_config.example.json` | Pi | Template for `pi/pi_config.json`. |
 | `server/server.py` | Laptop | TCP server: accepts one car, calls the decider for each frame, records everything. |
+| `server/pipeline/` | Laptop | **Where the image pipeline (black box) goes.** See its README. |
 | `server/hookup.py` | Laptop | **The integration point**: `decide(image_bytes, meta)` and the `dummy` / `python` / `http` backends. Read the top of this file. |
 | `server/sign_decider.py` | Laptop | **Temporary.** Turns the CNN's detected sign into motor values (`ACTIONS` table). Replaced by the image pipeline. |
 | `server/cnn_api_client.py` | Laptop | **Temporary.** Client for the remote CNN API, used by `sign_decider.py`. URL set in `server_config.json`. |
@@ -128,6 +130,26 @@ Lift the wheels off the ground for motor tests.
 the raw terminals instead. Its `--power` is applied directly, ignoring
 `max_throttle`.
 
+### Manual tests
+
+Neither is automated. The file names deliberately don't start with `test_`,
+so pytest never runs them by accident.
+
+```bash
+cd ~/carlink/pi
+~/carlink-venv/bin/python tests/wheels_full_speed.py   # wheels off the ground!
+~/carlink-venv/bin/python tests/photo_to_server.py     # server must be running
+```
+
+- `wheels_full_speed.py` spins each wheel in turn at 100% power for 2 s,
+  using the config's wiring and reverse flags, and prints which motor it's
+  driving. Every wheel should turn forward.
+- `photo_to_server.py` takes one photo, sends it to the server like a normal
+  frame, and prints the label, score, motor command and response time. It
+  never moves the motors and writes nothing on the Pi. Stop `pi_client.py`
+  first, because the server takes one car at a time. Run the server with
+  `--verbose` to see the decider's `details` too.
+
 ### Without any hardware
 
 Set `camera.device` to `"test"` (a generated image) and run the Pi side with
@@ -145,15 +167,17 @@ In short:
    `{"motors": {"front_left": x, "front_right": x, "rear_left": x,
    "rear_right": x}}`, each value from -1 to 1. Optional fields are
    `"label"`, `"score"` and `"details"`.
-2. Put it in `server/` (or anywhere on `PYTHONPATH`) and point the config at
-   it:
+2. Put it in `server/pipeline/` as a package (see
+   [server/pipeline/README.md](server/pipeline/README.md)) and point the
+   config at it:
    ```json
    "decider": {"backend": "python", "target": "pipeline:decide",
                "options": {"model_path": "...", "anything": "the module needs"}}
    ```
    If the module defines `configure(options)`, it's called once at startup
    with `options`. Load models at import time or in `configure`, not per
-   frame.
+   frame. If it defines `__version__`, that version is written to every
+   recording's `session.json`.
 3. **Logging:** whatever the pipeline puts in `details` (detections, crop
    boxes, which defense fired, step timings) is written to that frame's line
    in `recordings/<session>/log.jsonl`. The pipeline can also save its own
@@ -185,9 +209,12 @@ reference is in [docs/README_original.md](docs/README_original.md#settings).
 | Pi `motors.max_throttle` / `min_throttle` | `0.6` / `0.0` | A command of 1.0 gives 0.6 of battery voltage. |
 | Pi `motors.wiring` | M1 front left (reversed), M2 rear left, M3 front right, M4 rear right (reversed) | |
 | Pi `camera` | 320x240 JPEG, quality 80 | |
-| Server `decider` | `python`, `sign_decider:decide` | `dummy` with `dummy_throttle` for testing without the CNN. |
+| Server `decider` | `python`, `sign_decider:decide` | `dummy` for testing without the CNN. Its `dummy_throttle` is 1.0, so all wheels run at full configured speed as soon as the car connects. |
 | Server `decider.options` | `{"cnn_api_url": ""}` | Passed to the decider module's `configure()`. Put the real CNN API URL here in your own config. |
 | Server `recording.enabled` | `true` | About 0.5 GB per hour of driving. |
+
+In one line: **a command of 1.0 means 60% power to motors 1, 2, 3 and 4, with
+motors 1 and 4 reversed.** These values are fixed for this one car.
 
 Until the pipeline replaces it, driving behavior lives in
 `server/sign_decider.py`: the `ACTIONS` table (CNN

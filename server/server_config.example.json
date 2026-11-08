@@ -23,6 +23,7 @@
     "target": "sign_decider:decide",
     "url": "",
     "timeout_s": 2.0,
+    "_dummy_throttle": "dummy backend: 1.0 = all wheels at full configured speed as soon as the car connects.",
     "dummy_throttle": 1.0,
     "_options": "Passed to the python module's configure(options). Free-form; the module decides what it needs.",
     "options": {
