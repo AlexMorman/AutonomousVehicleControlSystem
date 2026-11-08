@@ -1,0 +1,14 @@
+# Real configs hold the shared password. Copy the *.example.json files instead.
+pi_config.json
+server_config.json
+
+# Recordings grow by about 0.5 GB per hour of driving.
+recordings/
+
+# Output of pi_client.py --test-camera
+camera_test.*
+
+__pycache__/
+*.pyc
+.venv/
+venv/

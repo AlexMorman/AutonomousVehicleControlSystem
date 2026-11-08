@@ -1,0 +1,40 @@
+{
+  "_comment": "Pi settings. Keys starting with '_' are notes and are ignored. Anything left out uses the built-in default.",
+  "server": {
+    "_comment": "host = the server's IP address on your network. The password must match server_config.json.",
+    "host": "<laptop-ip>",
+    "port": 5005,
+    "password": "change-me",
+    "connect_timeout_s": 5.0,
+    "reply_timeout_s": 5.0,
+    "reconnect_delay_s": 2.0
+  },
+
+  "camera": {
+    "_comment": "device: 0 for /dev/video0 (or a path, or \"test\" for a fake camera). format: jpeg, png or raw.",
+    "device": 0,
+    "width": 320,
+    "height": 240,
+    "fps": 15,
+    "format": "jpeg",
+    "jpeg_quality": 80
+  },
+
+  "motors": {
+    "_comment": "Commands run from -1 to 1. A command of 1 applies max_throttle; the smallest non-zero command applies min_throttle.",
+    "driver": "bonnet",
+    "bonnet_i2c_address": 96,
+    "safety_timeout_s": 10.0,
+    "max_throttle": 0.6,
+    "min_throttle": 0.0,
+    "deadband": 0.05,
+    "wiring": {
+      "front_left":  {"terminal": 1, "reverse": true},
+      "rear_left":   {"terminal": 2, "reverse": false},
+      "front_right": {"terminal": 3, "reverse": false},
+      "rear_right":  {"terminal": 4, "reverse": true}
+    }
+  },
+
+  "stats_every_s": 5.0
+}

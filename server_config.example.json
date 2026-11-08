@@ -1,0 +1,28 @@
+{
+  "_comment": "Server settings. Keys starting with '_' are notes and are ignored. Anything left out uses the built-in default.",
+
+  "listen": {
+    "host": "0.0.0.0",
+    "port": 5005
+  },
+
+  "_password": "Must match the password in the Pi's pi_config.json.",
+  "password": "change-me",
+
+  "idle_timeout_s": 10.0,
+  "max_frame_bytes": 8388608,
+
+  "recording": {
+    "enabled": true,
+    "directory": "recordings"
+  },
+
+  "decider": {
+    "_comment": "backend: dummy, python or http. See the top of hookup.py.",
+    "backend": "python",
+    "target": "sign_decider:decide",
+    "url": "",
+    "timeout_s": 2.0,
+    "dummy_throttle": 1.0
+  }
+}
