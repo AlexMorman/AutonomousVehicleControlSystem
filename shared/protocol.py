@@ -1,7 +1,7 @@
 """Shared message format, framing, password check and config loading.
 
-Both pi_client.py and server.py import this file, so copy the SAME version of it
-to both machines. If you change it on one side, change it on the other.
+Both pi/pi_client.py and server/server.py import this file. Keep both machines
+on the same version of the repository (git pull on both after changing it).
 
 Wire format
 -----------
@@ -162,7 +162,7 @@ def server_handshake(sock: socket.socket, password: str) -> None:
     if header.get("version") != PROTOCOL_VERSION:
         send_error(sock, "version_mismatch",
                    f"server speaks version {PROTOCOL_VERSION}, client {header.get('version')}")
-        raise ProtocolError("protocol version mismatch; copy the same protocol.py to both machines")
+        raise ProtocolError("protocol version mismatch; run the same version of the repo on both machines")
     if not hmac.compare_digest(str(header.get("mac", "")), _mac(password, nonce)):
         send_error(sock, "bad_password", "password does not match the server's")
         raise AuthError("client failed the password check")
@@ -177,7 +177,7 @@ def client_handshake(sock: socket.socket, password: str) -> None:
     if header.get("version") != PROTOCOL_VERSION:
         raise ProtocolError(
             f"server speaks protocol version {header.get('version')}, this client "
-            f"{PROTOCOL_VERSION}; copy the same protocol.py to both machines")
+            f"{PROTOCOL_VERSION}; run the same version of the repo on both machines")
     send_message(sock, {"type": "auth", "version": PROTOCOL_VERSION,
                         "mac": _mac(password, str(header.get("nonce", "")))})
     try:

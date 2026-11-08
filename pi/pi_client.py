@@ -26,7 +26,9 @@ import threading
 import time
 from pathlib import Path
 
-import protocol as P
+# protocol.py is shared with the server and lives in ../shared
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
+import protocol as P  # noqa: E402
 
 log = logging.getLogger("pi")
 
