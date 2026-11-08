@@ -9,11 +9,13 @@ sends them back. The Pi drives the motors and sends the next frame.
  Pi  (pi/pi_client.py)                       Laptop  (server/server.py)
  ─────────────────────                       ──────────────────────────
  newest webcam frame ── frame (JPEG, TCP) ─▶ hookup.decide(image, meta)
-                                               └─ sign_decider.decide
-                                                    └─ cnn_api_client.classify
-                                                         └─ CNN service (HTTPS)
- set 4 motors ◀──────── command ──────────── label, score, 4 motor values
-       └─▶ repeat                              └─▶ saved to recordings/
+                                               └─ image pipeline (black box):
+                                                  cropping, CNN, defenses
+                                                  [today: temporary stand-in,
+                                                   sign_decider + cnn_api_client]
+ set 4 motors ◀──────── command ──────────── 4 motor values (+ label, score)
+       └─▶ repeat                              └─▶ frame + details saved
+                                                   to recordings/
 ```
 
 The Pi sends one frame, waits for the command, then sends the next. The
@@ -29,8 +31,8 @@ CNN is the bottleneck; see [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 | `pi/pi_config.example.json` | Pi | Template for `pi/pi_config.json`. |
 | `server/server.py` | Laptop | TCP server: accepts one car, calls the decider for each frame, records everything. |
 | `server/hookup.py` | Laptop | **The integration point**: `decide(image_bytes, meta)` and the `dummy` / `python` / `http` backends. Read the top of this file. |
-| `server/sign_decider.py` | Laptop | Turns the CNN's detected sign into motor values (`ACTIONS` table). |
-| `server/cnn_api_client.py` | Laptop | A teammate's client for the CNN service: `classify(frame)`. To be replaced by a local CNN. |
+| `server/sign_decider.py` | Laptop | **Temporary.** Turns the CNN's detected sign into motor values (`ACTIONS` table). Replaced by the image pipeline. |
+| `server/cnn_api_client.py` | Laptop | **Temporary.** Client for the remote CNN API, used by `sign_decider.py`. URL set in `server_config.json`. |
 | `server/server_config.example.json` | Laptop | Template for `server/server_config.json`. |
 | `shared/protocol.py` | Both | Message framing, password check, config loading. Imported by both sides. |
 | `docs/` | | Original README, laptop/hotspot run-book, known issues. |
@@ -110,6 +112,11 @@ from. With the commands above that's `server/recordings/`, which git ignores.
 For the step-by-step routine over the laptop's hotspot (ssh, finding the IP),
 see [docs/Local_Instructions.md](docs/Local_Instructions.md).
 
+To skip looking up the laptop's IP every session, put its mDNS name
+(`<laptop-hostname>.local`) in `server.host`. The Pi is already reached this
+way, as `<pi-hostname>.local`. On Debian this needs `avahi-daemon` running on the
+laptop. Check with `avahi-resolve -n $(hostname).local`.
+
 ### Bring-up and tests (Pi)
 
 Lift the wheels off the ground for motor tests.
@@ -117,11 +124,14 @@ Lift the wheels off the ground for motor tests.
 ```bash
 ~/carlink-venv/bin/python pi_client.py --test-camera        # saves camera_test.jpg
 ~/carlink-venv/bin/python pi_client.py --test-motors        # each wheel forward in turn, 2 s
-~/carlink-venv/bin/python wheel_test.py 1 2 3 4 --power 0.5 --reverse 1 4
+~/carlink-venv/bin/python wheel_test.py all --power 0.5    # all four forward, 5 s
+~/carlink-venv/bin/python wheel_test.py front_left --seconds 2
 ```
 
-`wheel_test.py` doesn't read the config, so pass `--reverse` for the terminals
-reversed in `motors.wiring` (currently 1 and 4).
+`wheel_test.py` takes the wiring, reverse flags and I2C address from
+`pi_config.json`, so "forward" means forward on the car. `--no-config` drives
+the raw terminals instead. Its `--power` is applied directly, ignoring
+`max_throttle`.
 
 ### Without any hardware
 
@@ -130,25 +140,62 @@ Set `camera.device` to `"test"` (a generated image) and run the Pi side with
 settings the whole loop runs on one computer, with `server.host` set to
 `127.0.0.1`.
 
+## Plugging in the image pipeline
+
+The pipeline is a black box to the rest of the system, and `server/hookup.py`
+is the only place it connects. The full contract is at the top of that file.
+In short:
+
+1. Write a module with `decide(image_bytes, meta)` that returns
+   `{"motors": {"front_left": x, "front_right": x, "rear_left": x,
+   "rear_right": x}}`, each value from -1 to 1. Optional fields are
+   `"label"`, `"score"` and `"details"`.
+2. Put it in `server/` (or anywhere on `PYTHONPATH`) and point the config at
+   it:
+   ```json
+   "decider": {"backend": "python", "target": "pipeline:decide",
+               "options": {"model_path": "...", "anything": "the module needs"}}
+   ```
+   If the module defines `configure(options)`, it's called once at startup
+   with `options`. Load models at import time or in `configure`, not per
+   frame.
+3. **Logging:** whatever the pipeline puts in `details` (detections, crop
+   boxes, which defense fired, step timings) is written to that frame's line
+   in `recordings/<session>/log.jsonl`. The pipeline can also save its own
+   files (such as crops) to `meta["session_dir"]`. `decide_ms` records how
+   long each frame took.
+4. **Timing:** answer well inside 1 s. Slower frames make the car stop and
+   start; after 5 s it reconnects. See
+   [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) section 1.
+5. **Images:** `image_bytes` is the JPEG exactly as the Pi encoded it.
+   `hookup.decode_image(image_bytes, meta)` turns it into an OpenCV BGR array.
+   Decode once and pass arrays between pipeline steps; re-encoding to JPEG
+   inside the pipeline would add a second round of compression.
+
+If the pipeline raises an exception or returns something malformed, the car
+gets a stop command for that frame and the error is logged. To run the
+pipeline as a separate local process instead, use the `http` backend (see
+`hookup.py`).
+
 ## Configuration
 
-Values in the table are the ones in the example configs, which match what the
-car ran on 2026-11-06. The full settings reference is in
-[docs/README_original.md](docs/README_original.md#settings). Note that
-`motors.safety_timeout_s` is now 10.0, not the 1.0 shown there.
+Values in the table are the ones in the example configs. The full settings
+reference is in [docs/README_original.md](docs/README_original.md#settings).
 
 | Setting | Value | Notes |
 |---|---|---|
 | Pi `server.host` | `<laptop-ip>` | The laptop's IP on the hotspot. Changes with DHCP. |
 | Pi `server.reply_timeout_s` | `5.0` | No reply this long: reconnect. |
-| Pi `motors.safety_timeout_s` | `10.0` | No command this long: stop the motors. |
+| Pi `motors.safety_timeout_s` | `1.0` | No command this long: stop the motors. Raise it in your own config while using the slow temporary CNN API. |
 | Pi `motors.max_throttle` / `min_throttle` | `0.6` / `0.0` | A command of 1.0 gives 0.6 of battery voltage. |
 | Pi `motors.wiring` | M1 front left (reversed), M2 rear left, M3 front right, M4 rear right (reversed) | |
 | Pi `camera` | 320x240 JPEG, quality 80 | |
 | Server `decider` | `python`, `sign_decider:decide` | `dummy` with `dummy_throttle` for testing without the CNN. |
+| Server `decider.options` | `{"cnn_api_url": ""}` | Passed to the decider module's `configure()`. Put the real CNN API URL here in your own config. |
 | Server `recording.enabled` | `true` | About 0.5 GB per hour of driving. |
 
-Driving behavior lives in `server/sign_decider.py`: the `ACTIONS` table (CNN
+Until the pipeline replaces it, driving behavior lives in
+`server/sign_decider.py`: the `ACTIONS` table (CNN
 class name to left/right motor values), `NO_SIGN` (currently full speed
 ahead), `UNKNOWN_SIGN` (stop), `MIN_CONFIDENCE` and `HOLD_SECONDS`.
 
