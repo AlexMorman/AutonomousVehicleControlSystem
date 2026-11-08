@@ -102,8 +102,19 @@ Pi:
 ```bash
 cd ~/carlink/pi
 ~/carlink-venv/bin/python pi_client.py            # drives the motors
-~/carlink-venv/bin/python pi_client.py --dry-run  # logs motor values instead
+~/carlink-venv/bin/python pi_client.py --verbose  # also prints every frame
+~/carlink-venv/bin/python pi_client.py --dry-run  # no Bonnet; add --verbose to see values
 ```
+
+With `--verbose`, the Pi prints one line per frame showing the command it
+received and the power it actually applied to each Bonnet terminal, after
+`max_throttle`, the deadband and the reverse flags:
+
+```
+seq 2: dummy (1.00), 0 ms | command FL +1.00 FR +1.00 RL +1.00 RR +1.00 | power M1 -60% M2 +60% M3 +60% M4 -60%
+```
+
+Everything goes to the console; the Pi writes nothing to disk.
 
 Stop either side with Ctrl+C. The Pi stops the motors whenever it exits or
 loses the connection.

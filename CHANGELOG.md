@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-11-07, fifth round: applied motor power in the Pi's verbose output
+
+### Show applied motor power with pi_client.py --verbose
+
+- `pi/pi_client.py`:
+  - With `--verbose`, each frame's line shows the label, score, round trip,
+    the command received (`FL/FR/RL/RR`, -1 to 1) and the power applied to
+    each Bonnet terminal in percent (`M1`–`M4`). The power is after
+    `max_throttle`, `min_throttle`, the deadband and the reverse flags, so
+    its sign is the actual direction sent to the terminal.
+  - New helpers: `MotorController.format_power()` and `_format_command()`.
+    The line is only built when verbose output is on.
+  - The dry-run driver no longer logs its own per-motor changes, since the
+    verbose line covers them. `--verbose` help text and the module docstring
+    were updated.
+  - Console only; nothing is written to disk.
+- `README.md`: running section shows `--verbose` with an example line.
+- Tested against a dummy server with the example config (max 60%, M1 and M4
+  reversed). Commands of 1.0, 0.5, -1.0 and 0.03 gave M1 -60% M2 +60% M3
+  +60% M4 -60%; ±30%; the mirror image of the first; and +0% everywhere
+  (inside the deadband). Without `--verbose` no per-frame lines appear.
+
+
 ## 2026-11-07, fourth round: manual tests and the pipeline's home
 
 Decisions recorded in this round:

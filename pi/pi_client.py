@@ -12,7 +12,8 @@ Usage
     python3 pi_client.py --test-camera       # save one frame to a file and exit
     python3 pi_client.py --test-motors       # spin each motor in turn (wheels off the ground!)
     python3 pi_client.py --dry-run           # run without the motor Bonnet (prints instead)
-    python3 pi_client.py --config other.json --verbose
+    python3 pi_client.py --verbose           # print each frame's command and applied motor power
+    python3 pi_client.py --config other.json
 """
 
 from __future__ import annotations
@@ -233,9 +234,7 @@ class _DryRunDriver:
         self.values = {}
 
     def set(self, terminal: int, throttle: float) -> None:
-        if self.values.get(terminal) != throttle:
-            log.debug("dry-run: M%d -> %+.2f", terminal, throttle)
-        self.values[terminal] = throttle
+        self.values[terminal] = throttle  # --verbose prints the applied power per frame
 
 
 class MotorController:
@@ -290,6 +289,13 @@ class MotorController:
             self._moving = any(applied.values())
         return applied
 
+    def format_power(self, applied: dict) -> str:
+        """Power per Bonnet terminal as applied, e.g. 'M1 -60% M2 +60% M3 +60% M4 -60%'.
+        The sign already includes the wiring's reverse flag."""
+        by_terminal = {self.wiring[name]["terminal"]: value + 0.0  # + 0.0 turns -0.0 into 0.0
+                       for name, value in applied.items()}
+        return " ".join(f"M{t} {by_terminal[t] * 100:+.0f}%" for t in sorted(by_terminal))
+
     def stop(self, reason: str = "") -> None:
         with self._lock:
             was_moving = self._moving
@@ -316,6 +322,19 @@ class MotorController:
 # ==========================================================================
 # Network loop
 # ==========================================================================
+
+_SHORT_NAMES = {"front_left": "FL", "front_right": "FR", "rear_left": "RL", "rear_right": "RR"}
+
+
+def _format_command(command: dict) -> str:
+    """The server's command as received, e.g. 'FL +1.00 FR +1.00 RL +1.00 RR +1.00'."""
+    parts = []
+    for name in P.MOTOR_NAMES:
+        value = command.get(name)
+        parts.append(f"{_SHORT_NAMES[name]} {value:+.2f}" if isinstance(value, (int, float))
+                     else f"{_SHORT_NAMES[name]} {value!r}")
+    return " ".join(parts)
+
 
 class Stats:
     def __init__(self, every_s: float):
@@ -370,9 +389,12 @@ def run_session(cfg: dict, password: str, camera: Camera, motors: MotorControlle
                 log.warning("ignoring unexpected message: %s", reply)
             rtt = time.monotonic() - sent
             last_rtt_ms = round(rtt * 1000, 1)
-            motors.apply(reply.get("motors") or {})
-            log.debug("seq %d: %s (%.2f) %s, %.0f ms", seq, reply.get("label"),
-                      reply.get("score") or 0.0, reply.get("motors"), rtt * 1000)
+            command = reply.get("motors") or {}
+            applied = motors.apply(command)
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug("seq %d: %s (%.2f), %.0f ms | command %s | power %s", seq,
+                          reply.get("label"), reply.get("score") or 0.0, rtt * 1000,
+                          _format_command(command), motors.format_power(applied))
             stats.add(rtt, len(data))
     finally:
         motors.stop("connection ended")
@@ -449,7 +471,9 @@ def main() -> None:
                         help="spin each motor in turn and exit (wheels off the ground!)")
     parser.add_argument("--throttle", type=float, default=0.5,
                         help="command value for --test-motors (default 0.5)")
-    parser.add_argument("--verbose", action="store_true", help="log every frame")
+    parser.add_argument("--verbose", action="store_true",
+                        help="print every frame: label, round trip, command received "
+                             "and power applied to each motor terminal")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
