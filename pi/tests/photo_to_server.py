@@ -7,7 +7,7 @@ motors are never touched and nothing is written to the Pi's disk. The
 server handles it like any other frame: it runs the configured decider and
 records the frame.
 
-    # on the laptop:  cd ~/carlink/server && python3 server.py --verbose
+    # on the laptop:  cd ~/carlink/server && ~/carlink-server-venv/bin/python server.py --verbose
     cd ~/carlink/pi
     ~/carlink-venv/bin/python tests/photo_to_server.py
 

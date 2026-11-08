@@ -13,7 +13,7 @@ laptop and the Pi.
 
 ```
 cd ~/carlink/server
-python3 server.py
+~/carlink-server-venv/bin/python server.py
 ```
 
 * Step 5: In new terminal tab, run command to get our IP address

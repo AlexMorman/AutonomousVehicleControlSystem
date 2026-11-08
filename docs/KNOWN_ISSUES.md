@@ -1,21 +1,22 @@
 # Known issues
 
 Open problems, checked against the code and the test drives so far. Each
-one could become a GitHub issue. Last updated 2026-11-07.
+one could become a GitHub issue. Last updated 2026-11-08.
 
-The image pipeline (cropping, CNN, defenses, driving logic) is a black box
-that plugs into `server/hookup.py`. Section 1 is about that connection.
-Section 2 covers the temporary stand-in (`sign_decider.py` +
-`cnn_api_client.py`) and goes away when the pipeline arrives.
+The image pipeline is a black box that plugs into `server/hookup.py`. It
+now lives in `server/pipeline/`: the black box team's local sign
+recognizer (`sign_cnn.py`), plus temporary glue that borrows the
+sign-to-motors rules from `sign_decider.py`. Section 2 is about that
+pipeline; section 3 only applies if you switch back to the old remote API.
 
 ## 1. Connecting the image pipeline
 
 1. **Nothing limits how long `decide()` takes.** `decider.timeout_s` only
    applies to the `http` backend. With the 1 s safety timeout, any frame
    slower than about 1 s makes the car stop and start, and anything over 5 s
-   causes a reconnect. On the laptop's CPU (no GPU), a CNN plus cropping
-   plus defenses could easily take that long. `decide_ms` in `log.jsonl`
-   shows the real time per frame; watch it once the pipeline runs.
+   causes a reconnect. Today's pipeline takes about 80 ms, but defenses added
+   later count against the same budget. `decide_ms` in `log.jsonl` shows the
+   real time per frame.
 
 2. **Reaction time equals pipeline time.** The Pi sends one frame and waits
    for the answer, so between answers the car drives on the last command
@@ -26,42 +27,54 @@ Section 2 covers the temporary stand-in (`sign_decider.py` +
    passes `details` through, but not `decider.options`. Those would have
    to go in the service's own config.
 
-## 2. Temporary CNN stand-in (until the pipeline replaces it)
+## 2. Image pipeline (`server/pipeline/`)
 
-4. **CNN latency causes reconnect loops.** The remote CNN often takes
-   several seconds per frame, and some calls time out, so many sessions end
-   after one frame or none. The API is on the
-   internet, and `cnn_api_client.py` opens a new HTTPS connection for every
-   frame; a single `requests.Session()` would help. **With the safety
-   timeout back to 1 s, the car will stop and start on every frame while
-   using this path.** Set `motors.safety_timeout_s` higher in your own
-   `pi_config.json` while testing with it.
-5. **The timeouts don't line up.** `requests` applies `timeout=5` to the
-   connect and to each read separately, so one call can take longer than
-   5 s, longer than the Pi's 5 s reply timeout.
-6. **Only `stop` has an action.** Any other class gets `UNKNOWN_SIGN`
-   (stop). The `details` field records this as `detected_unknown_class`.
-7. **False positives and missed distant signs.** `HOLD_SECONDS` keeps a
-    false positive in effect for another second.
-8. **No sign means full speed** (`NO_SIGN = FORWARD`). This was a
-    deliberate choice, but risky combined with seconds of latency.
-9. **Each frame is JPEG-compressed twice**: once on the Pi, and again by
-    `cnn_api_client.py` before uploading. This only affects this path; see
-    the README's note for the pipeline.
+4. **The detector's license needs a decision before the repo is public.**
+   `sign_detector.pt` is a fine-tuned Ultralytics YOLO26 model under
+   AGPL-3.0, and `ultralytics` itself is AGPL-3.0. The repository has no
+   license. Also check the LISA dataset's terms for redistributing a model
+   trained on it.
+5. **The reported confidence can't tell real signs from false ones.**
+   `sign_cnn.predict()` returns the classifier's confidence, which is close to
+   1.0 even on false detections, and throws away the detector's. As a
+   result, `MIN_CONFIDENCE` = 0.5 in `sign_decider.py` filters nothing.
+   This is for the black box team to fix in `predict()`.
+6. **Only one sign per frame**: the box the detector is most sure of. A
+   second sign in view is never seen.
+7. **Distant signs are missed.** The detector scores small, distant signs
+   well under its fixed 0.42 cut-off.
+8. **The sign-to-motors rules are still the temporary ones.** Only `stop`
+   is mapped. Every other class gets `UNKNOWN_SIGN` (stop), and no sign
+   means full speed (`NO_SIGN = FORWARD`). `HOLD_SECONDS` keeps a false
+   positive in effect for another second. The team's own `decide()` will
+   replace these rules.
+9. **`__version__` is a placeholder** (`"sign_cnn 2026-11-06 (unversioned)"`)
+   until the team versions its releases.
 
-## 3. Car, server and operations
+## 3. Old remote-API path (`target` = `sign_decider:decide`)
 
-10. **A missing config file is silently ignored.** Without `pi_config.json`
+10. **CNN latency causes reconnect loops.** The remote CNN often takes
+    several seconds per frame, and some calls time out. To use this path,
+    raise `motors.safety_timeout_s` in your own `pi_config.json`.
+11. **The timeouts don't line up.** `requests` applies `timeout=5` to the
+    connect and to each read separately, so one call can take longer than the
+    Pi's 5 s reply timeout.
+12. **Each frame is JPEG-compressed twice**: on the Pi, and again by
+    `cnn_api_client.py` before uploading.
+
+## 4. Car, server and operations
+
+13. **A missing config file is silently ignored.** Without `pi_config.json`
     or `server_config.json`, the scripts run on built-in defaults (server
     host 192.168.1.50, placeholder password) and don't say so.
     `wheel_test.py` does warn.
-11. **The laptop's IP changes every session**, so `server.host` in
+14. **The laptop's IP changes every session**, so `server.host` in
     `pi_config.json` has to be edited each time. A `.local` hostname was
     considered and rejected (it advertises the laptop on every network it
     joins).
-12. **Recordings are never cleaned up**, and a connection that sends no frames
+15. **Recordings are never cleaned up**, and a connection that sends no frames
     still creates an empty session folder.
-13. **The Pi's and server's clocks aren't synchronized**, so comparing
+16. **The Pi's and server's clocks aren't synchronized**, so comparing
     `capture_time` against `received_time` is meaningless.
 
 ## Accepted (not going to fix)
@@ -105,6 +118,9 @@ hard reset of that machine is acceptable.
 - **There was no home or version record for the pipeline.** It now goes in
   `server/pipeline/`, and its `__version__` is written to every
   `session.json`.
+- **The CNN depended on a remote internet API**, with seconds of latency per
+  frame. It now runs locally in `server/pipeline/` at about 80 ms per frame,
+  with Ultralytics' network checks and analytics switched off.
 - **It was unknown whether the Pi uses `~/carlink-venv`.** Confirmed: it
   does.
 - Dropped by decision (2026-11-07): camera resolution, testing models

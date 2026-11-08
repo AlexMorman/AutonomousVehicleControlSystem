@@ -1,26 +1,25 @@
 # carlink: Pi sign-following car
 
 A proof-of-concept autonomous model car. A Raspberry Pi on a 4WD chassis sends
-webcam frames over the local network to a laptop. The laptop asks a
-sign-detection CNN what it sees, turns the answer into four motor values, and
-sends them back. The Pi drives the motors and sends the next frame.
+webcam frames over the local network to a laptop. The laptop runs a local
+sign-detection model on each frame, turns the answer into four motor values,
+and sends them back. The Pi drives the motors and sends the next frame.
 
 ```
  Pi  (pi/pi_client.py)                       Laptop  (server/server.py)
  ─────────────────────                       ──────────────────────────
  newest webcam frame ── frame (JPEG, TCP) ─▶ hookup.decide(image, meta)
-                                               └─ image pipeline (black box):
-                                                  cropping, CNN, defenses
-                                                  [today: temporary stand-in,
-                                                   sign_decider + cnn_api_client]
+                                               └─ server/pipeline/ (black box):
+                                                  sign detector + CNN, local,
+                                                  CPU only (~80 ms per frame)
  set 4 motors ◀──────── command ──────────── 4 motor values (+ label, score)
        └─▶ repeat                              └─▶ frame + details saved
                                                    to recordings/
 ```
 
 The Pi sends one frame, waits for the command, then sends the next. The
-frame rate is therefore 1 / (network round trip + CNN time). Right now the
-CNN is the bottleneck; see [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
+frame rate is therefore 1 / (network round trip + pipeline time). With the
+local pipeline that is around 80 ms per frame on the laptop's CPU.
 
 ## Repository layout
 
@@ -31,10 +30,10 @@ CNN is the bottleneck; see [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 | `pi/tests/` | Pi | Two manual hardware tests: every wheel at full power, and one photo sent to the server. |
 | `pi/pi_config.example.json` | Pi | Template for `pi/pi_config.json`. |
 | `server/server.py` | Laptop | TCP server: accepts one car, calls the decider for each frame, records everything. |
-| `server/pipeline/` | Laptop | **Where the image pipeline (black box) goes.** See its README. |
+| `server/pipeline/` | Laptop | **The image pipeline (black box).** The black box team's local sign recognizer (`sign_cnn.py` + two model files) and the glue that connects it to `hookup.py`. See its README. |
 | `server/hookup.py` | Laptop | **The integration point**: `decide(image_bytes, meta)` and the `dummy` / `python` / `http` backends. Read the top of this file. |
-| `server/sign_decider.py` | Laptop | **Temporary.** Turns the CNN's detected sign into motor values (`ACTIONS` table). Replaced by the image pipeline. |
-| `server/cnn_api_client.py` | Laptop | **Temporary.** Client for the remote CNN API, used by `sign_decider.py`. URL set in `server_config.json`. |
+| `server/sign_decider.py` | Laptop | **Temporary.** The sign-to-motors rules (`ACTIONS` table), used by the pipeline until the team supplies its own. Also still runs the old remote-API path. |
+| `server/cnn_api_client.py` | Laptop | **Old path.** Client for the remote CNN API, only used with `target` `sign_decider:decide`. URL set in `server_config.json`. |
 | `server/server_config.example.json` | Laptop | Template for `server/server_config.json`. |
 | `shared/protocol.py` | Both | Message framing, password check, config loading. Imported by both sides. |
 | `docs/` | | Original README, laptop/hotspot run-book, known issues. |
@@ -80,12 +79,19 @@ In `pi/pi_config.json`, set `server.host` to the laptop's IP address.
 
 ### Laptop (Debian 13)
 
+The image pipeline needs PyTorch and Ultralytics, which aren't in apt, so the
+server runs from a venv. Debian blocks the system `pip`.
+
 ```bash
-sudo apt install -y python3-requests python3-numpy python3-opencv
+sudo apt install -y python3-venv python3-requests python3-numpy python3-opencv
+python3 -m venv --system-site-packages ~/carlink-server-venv
+~/carlink-server-venv/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+~/carlink-server-venv/bin/pip install "ultralytics>=8.4.175"
 ```
 
-Debian blocks the system `pip`. To use pip instead of apt, make a venv and run
-`pip install -r server/requirements.txt`. If a firewall is enabled, allow TCP
+Install torch from the CPU-only index as shown: the default build bundles
+NVIDIA GPU libraries (about 5 GB) that this laptop can't use. Then run the
+server with `~/carlink-server-venv/bin/python server.py`. If a firewall is enabled, allow TCP
 port 5005.
 
 ## Running
@@ -94,7 +100,7 @@ Laptop:
 
 ```bash
 cd ~/carlink/server
-python3 server.py            # add --verbose to log every frame
+~/carlink-server-venv/bin/python server.py   # add --verbose to log every frame
 ```
 
 Pi:
@@ -216,18 +222,18 @@ reference is in [docs/README_original.md](docs/README_original.md#settings).
 |---|---|---|
 | Pi `server.host` | `<laptop-ip>` | The laptop's IP on the hotspot. Changes with DHCP. |
 | Pi `server.reply_timeout_s` | `5.0` | No reply this long: reconnect. |
-| Pi `motors.safety_timeout_s` | `1.0` | No command this long: stop the motors. Raise it in your own config while using the slow temporary CNN API. |
+| Pi `motors.safety_timeout_s` | `1.0` | No command this long: stop the motors. Raise it only if you switch back to the slow remote CNN API. |
 | Pi `motors.max_throttle` / `min_throttle` | `0.6` / `0.0` | A command of 1.0 gives 0.6 of battery voltage. |
 | Pi `motors.wiring` | M1 front left (reversed), M2 rear left, M3 front right, M4 rear right (reversed) | |
 | Pi `camera` | 320x240 JPEG, quality 80 | |
-| Server `decider` | `python`, `sign_decider:decide` | `dummy` for testing without the CNN. Its `dummy_throttle` is 1.0, so all wheels run at full configured speed as soon as the car connects. |
-| Server `decider.options` | `{"cnn_api_url": ""}` | Passed to the decider module's `configure()`. Put the real CNN API URL here in your own config. |
+| Server `decider` | `python`, `pipeline:decide` | The local pipeline. `sign_decider:decide` = the old remote CNN API. `dummy` for testing without any model. Its `dummy_throttle` is 1.0, so all wheels run at full configured speed as soon as the car connects. |
+| Server `decider.options` | `{"cnn_api_url": ""}` | Passed to the decider module's `configure()`. `cnn_api_url` is only needed for the old remote-API path. |
 | Server `recording.enabled` | `true` | About 0.5 GB per hour of driving. |
 
 In one line: **a command of 1.0 means 60% power to motors 1, 2, 3 and 4, with
 motors 1 and 4 reversed.** These values are fixed for this one car.
 
-Until the pipeline replaces it, driving behavior lives in
+Until the black box team supplies its own, driving behavior lives in
 `server/sign_decider.py`: the `ACTIONS` table (CNN
 class name to left/right motor values), `NO_SIGN` (currently full speed
 ahead), `UNKNOWN_SIGN` (stop), `MIN_CONFIDENCE` and `HOLD_SECONDS`.

@@ -1,5 +1,90 @@
 # Changelog
 
+## 2026-11-08: local image pipeline
+
+The black box team's sign recognizer (`sign_cnn`) now runs locally in
+`server/pipeline/` and is the default decider. The remote CNN API path is
+still available.
+
+### Add the black box team's sign recognizer to server/pipeline/
+
+How the delivered files compare with what is committed:
+
+| File | Change |
+|---|---|
+| `sign_cnn.py` | None. Byte-identical to the delivered file (SHA-256 `9e93ce09…`). |
+| `lisa_cnn.pt` | None. Byte-identical (SHA-256 `e594e29b…`). |
+| `sign_detector.pt` | Metadata removed, weights identical (all 708 float16 tensors compared). Delivered SHA-256 `f02889c4…`, committed `5e024a8a…`. |
+| `__pycache__/sign_cnn.cpython-312.pyc` | Not committed (build output; it also embedded the author's local path). |
+
+Removed from `sign_detector.pt`, because it identified the author (a GitHub
+account and repository, a commit hash, local paths) and holds nothing
+needed for inference:
+- Top-level keys `git`, `train_args` (113 settings, cut to `task` and
+  `imgsz`), `optimizer`, `ema` (empty), `epoch`, `best_fitness`, `stopper`,
+  `updates`, `modelopt`, `scaler`, `train_metrics` and `train_results`.
+- `model.args`, the model's own copy of the training settings, likewise cut
+  to `task` and `imgsz`.
+- `model.yaml["yaml_file"]`.
+
+Kept: the weights, the model architecture, `date`, `version` (Ultralytics
+8.4.175), `docs` and the `license` notice (AGPL-3.0). On 340 test
+frames, predictions from the stripped file matched the original exactly.
+
+### Connect the pipeline to hookup.py
+
+- `server/pipeline/__init__.py` (new): glue between `hookup.py` and
+  `sign_cnn`.
+  - `configure()` loads `SignCNN` once at startup (about 2 s).
+  - `decide()` decodes the JPEG, calls `predict()`, and turns the result
+    into motor values with `sign_decider.decide_from_sign()`. The black box
+    team hasn't supplied its own sign-to-motors step yet.
+  - Sets `YOLO_OFFLINE=1` before importing Ultralytics, so nothing leaves
+    the laptop. Without it, Ultralytics resolves `dns.google` /
+    `one.one.one.one` at import to check for internet access, and sends
+    anonymous usage analytics after predictions when online.
+  - `__version__` is a placeholder until the team versions its releases.
+- `server/sign_decider.py`: the rules moved into a new
+  `decide_from_sign(sign, confidence, meta)`. `decide()` (the remote-API
+  path) now calls it. The rules themselves are unchanged. `cnn_api_client`
+  is imported only when the remote-API path is used, so the pipeline
+  doesn't need `requests`.
+- `server/server_config.example.json`: `decider.target` changed from
+  `sign_decider:decide` to `pipeline:decide`, with a comment on both
+  choices. `cnn_api_url` is now noted as only needed for the old path.
+- `server/requirements.txt`: adds `torch`, `torchvision`,
+  `ultralytics>=8.4.175` and `Pillow`, with the CPU-only install command.
+- Tested:
+  - Through `hookup` on recorded frames: stop signs gave all motors 0, with
+    details recorded.
+  - 442 frames in 35 s (about 80 ms each on a 2-core CPU) with every DNS
+    lookup and connection attempt trapped: none were made. The same test on
+    `sign_cnn` without the switch showed the online check.
+  - Full loop: `server.py` running `pipeline:decide`, and
+    `photo_to_server.py` with a recorded stop-sign frame as its camera,
+    returned `stop` in 204 ms (the first frame includes warm-up). The server
+    log and `session.json` showed the target, version and details.
+
+### Update docs for the local pipeline
+
+- `README.md`:
+  - Intro, diagram and layout table describe the local pipeline.
+  - Laptop setup now uses a venv (`~/carlink-server-venv`) with CPU-only
+    PyTorch, and the server run command uses it.
+  - Config table: `pipeline:decide`, and the safety-timeout note.
+- `server/pipeline/README.md`: rewritten to list what's in the folder, how
+  it stays offline, and the contract in short.
+- `docs/Local_Instructions.md` and `pi/tests/photo_to_server.py`
+  (docstring): the server command uses the venv's Python.
+- `docs/KNOWN_ISSUES.md`:
+  - New section on the pipeline: AGPL license decision, reported confidence
+    can't separate real from false signs, one sign per frame, distant
+    signs, temporary rules, placeholder version.
+  - The remote-API items are now limited to that path.
+  - "The CNN depended on a remote internet API" moved to Resolved.
+- `CHANGELOG.md`: this section.
+
+
 ## 2026-11-07, fifth round: applied motor power in the Pi's verbose output
 
 ### Show applied motor power with pi_client.py --verbose
