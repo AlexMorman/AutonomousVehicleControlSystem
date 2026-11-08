@@ -1,0 +1,8 @@
+# The server scripts themselves use only the standard library.
+# These are for hookup.decode_image(), sign_decider.py and cnn_api_client.py.
+# On Debian 13 the easiest route is apt: python3-requests python3-numpy python3-opencv
+# Or in a venv:  pip install -r requirements.txt
+# Versions are not pinned yet; record the working ones with: pip freeze
+requests
+numpy
+opencv-python-headless

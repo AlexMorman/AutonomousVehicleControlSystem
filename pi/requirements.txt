@@ -1,0 +1,5 @@
+# Install into the Pi's venv:  ~/carlink-venv/bin/pip install -r requirements.txt
+# OpenCV and numpy come from apt (python3-opencv), not pip: building OpenCV on a
+# Pi 3B takes hours. The venv must be created with --system-site-packages.
+# Versions are not pinned yet; record the working ones with: pip freeze
+adafruit-circuitpython-motorkit
