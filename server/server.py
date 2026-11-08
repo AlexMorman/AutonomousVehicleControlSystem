@@ -101,6 +101,7 @@ class SessionRecorder:
                 "label": decision.label,
                 "score": decision.score,
                 "motors": decision.motors,
+                "details": decision.details,
                 "decide_ms": round(decide_ms, 1),
                 "previous_round_trip_ms": last_rtt_ms,
                 "format": meta["format"],
@@ -132,6 +133,8 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str) -> No
     if cfg["recording"]["enabled"]:
         recorder = SessionRecorder(Path(cfg["recording"]["directory"]), addr,
                                    {"decider": cfg["decider"]["backend"],
+                                    "decider_target": cfg["decider"]["target"]
+                                    if cfg["decider"]["backend"] == "python" else None,
                                     "protocol_version": P.PROTOCOL_VERSION})
         log.info("recording to %s", recorder.dir)
 
@@ -154,6 +157,7 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str) -> No
                 "capture_time": header.get("capture_time"),
                 "received_time": received,
                 "session": recorder.name if recorder else None,
+                "session_dir": str(recorder.dir) if recorder else None,
             }
 
             started = time.perf_counter()

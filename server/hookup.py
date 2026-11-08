@@ -1,9 +1,11 @@
 """
 =============================================================================
- HOOK-UP POINT: where the image classifier and motor control plug in
+ HOOK-UP POINT: where the image pipeline plugs in
 =============================================================================
 
-The server calls ONE function for every camera frame the car sends:
+The image pipeline (cropping, CNN, defenses, driving logic) is a black box to
+the rest of this system. This file is the only place it connects. The
+server calls ONE function for every camera frame the car sends:
 
     decide(image_bytes: bytes, meta: dict) -> Decision
 
@@ -21,6 +23,10 @@ section of server_config.json:
      below and returns a Decision or a dict (see "What to return").
      Load your model at module import time, not inside the function, so it
      loads once instead of on every frame.
+     Optional: if the module also has a function configure(options), it is
+     called once at startup with the free-form "options" dict from the
+     decider section of server_config.json, so the module's own settings
+     (model path, thresholds, URLs) can live there instead of in code.
 
   2. "backend": "http"     Your code runs as a separate service.
      Set "url" to its endpoint, for example "http://127.0.0.1:8000/decide".
@@ -49,7 +55,11 @@ meta          {"seq": frame number within this connection (1, 2, 3, ...),
                "width": 320, "height": 240, "channels": 3,
                "capture_time": seconds since 1970 on the Pi's clock,
                "received_time": seconds since 1970 on the server's clock,
-               "session": name of this connection's recording folder}
+               "session": name of this connection's recording folder,
+               "session_dir": full path of that folder (None if recording is
+                              off); your code may save its own debug files
+                              there, e.g. crops}
+              seq 1 means a new connection: reset any per-drive state.
 
 What to return
 --------------
@@ -61,6 +71,12 @@ A Decision, or a dict with the same fields:
                 "front_right": 0.8,
                 "rear_left": 0.2,
                 "rear_right": 0.8}}
+
+Optionally add "details": a dict of anything worth recording about this
+frame (detections, crops' coordinates, which defense fired, timings). It is
+written to that frame's line in log.jsonl and never sent to the car. Anything
+not JSON-serializable is converted to text; over 64 KB it is replaced by a
+note. Problems with "details" never stop the car.
 
 All four motors are required. Values outside -1..1 are clipped. The car
 applies max/min throttle limits itself, so 1.0 means "as fast as the car is
@@ -74,8 +90,11 @@ Timing
 ------
 The car waits for each answer before sending the next frame, so the time
 decide() takes is directly the car's reaction time. If no answer arrives
-within the car's safety timeout (default 1 s), the car stops its motors
-until one does.
+within the car's safety timeout (motors.safety_timeout_s, default 1 s), the
+car stops its motors until one does. If none arrives within its reply
+timeout (server.reply_timeout_s, default 5 s), it disconnects and
+reconnects. Aim to answer well inside 1 s. Each frame's time is logged as
+decide_ms in log.jsonl.
 =============================================================================
 """
 
@@ -85,12 +104,20 @@ import importlib
 import json
 import logging
 import math
+import sys
 import urllib.request
 from dataclasses import dataclass, field
+from pathlib import Path
 
-import protocol as P
+# protocol.py lives in ../shared. server.py adds it too; this line lets other
+# code (tests, the image pipeline's own scripts) import hookup directly.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
+import protocol as P  # noqa: E402
 
 log = logging.getLogger("hookup")
+
+
+MAX_DETAILS_BYTES = 64 * 1024  # larger "details" are replaced by a note in the log
 
 
 @dataclass
@@ -98,6 +125,7 @@ class Decision:
     label: str
     score: float
     motors: dict = field(default_factory=lambda: {name: 0.0 for name in P.MOTOR_NAMES})
+    details: dict = field(default_factory=dict)  # recorded in log.jsonl, never sent to the car
 
     @classmethod
     def stop(cls, label: str = "stop", score: float = 0.0) -> "Decision":
@@ -189,9 +217,10 @@ def normalize(result) -> Decision:
     Raises ValueError for anything that can't safely be sent to the car.
     """
     if isinstance(result, Decision):
-        label, score, motors = result.label, result.score, result.motors
+        label, score, motors, details = result.label, result.score, result.motors, result.details
     elif isinstance(result, dict):
-        label, score, motors = result.get("label"), result.get("score"), result.get("motors")
+        label, score, motors, details = (result.get("label"), result.get("score"),
+                                         result.get("motors"), result.get("details"))
     else:
         raise ValueError(f"decide() returned {type(result).__name__}; expected a Decision or dict")
 
@@ -216,4 +245,31 @@ def normalize(result) -> Decision:
         raise ValueError(f"score is {score!r}, not a number") from None
     if math.isnan(score) or math.isinf(score):
         score = 0.0
-    return Decision(label=str(label) if label is not None else "", score=score, motors=clean)
+    return Decision(label=str(label) if label is not None else "", score=score, motors=clean,
+                    details=_clean_details(details))
+
+
+def _json_default(obj):
+    """numpy numbers and arrays become plain numbers and lists; anything else text."""
+    if hasattr(obj, "tolist"):
+        try:
+            return obj.tolist()
+        except Exception:
+            pass
+    return str(obj)
+
+
+def _clean_details(details) -> dict:
+    """Make "details" safe to write as one JSON line. Never raises: a logging
+    problem must not stop the car."""
+    if details is None:
+        return {}
+    if not isinstance(details, dict):
+        details = {"value": details}
+    try:
+        text = json.dumps(details, default=_json_default)
+    except (TypeError, ValueError) as exc:
+        return {"_unloggable": f"{type(exc).__name__}: {exc}"}
+    if len(text) > MAX_DETAILS_BYTES:
+        return {"_too_large_bytes": len(text)}
+    return json.loads(text)

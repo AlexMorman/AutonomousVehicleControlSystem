@@ -17,7 +17,8 @@ classifier returns, exactly. Any sign not listed gets UNKNOWN_SIGN.
 
 What gets recorded: "label" and "score" are what the classifier actually
 returned for that frame ("none" and 0.0 if it saw no sign). "motors" is the
-action that was sent.
+action that was sent. "details" says why: which sign the car acted on and
+whether it was a fresh detection, a held one, unknown, or no sign.
 """
 
 import time
@@ -29,6 +30,7 @@ import hookup
 def configure(options):
     """Called once by hookup.configure() with decider.options from server_config.json."""
     cnn_api_client.configure(options.get("cnn_api_url", ""))
+
 
 # Actions: (left-side value, right-side value), each from -1 to 1.
 # The car converts these to motor power using its min/max_throttle settings.
@@ -65,14 +67,21 @@ def decide(image_bytes, meta):
 
     if sign is not None and confidence >= MIN_CONFIDENCE:
         _last_sign, _last_seen = sign, now
-        action = ACTIONS.get(sign, UNKNOWN_SIGN)
+        acting_on, reason = sign, "detected"
     elif _last_sign is not None and now - _last_seen < HOLD_SECONDS:
-        action = ACTIONS.get(_last_sign, UNKNOWN_SIGN)
+        acting_on, reason = _last_sign, "held"
     else:
+        acting_on, reason = None, "no_sign"
+    if acting_on is None:
         action = NO_SIGN
+    elif acting_on in ACTIONS:
+        action = ACTIONS[acting_on]
+    else:
+        action, reason = UNKNOWN_SIGN, reason + "_unknown_class"
 
     left, right = action
     return {"label": sign if sign is not None else "none",
             "score": confidence,
             "motors": {"front_left": left, "rear_left": left,
-                       "front_right": right, "rear_right": right}}
+                       "front_right": right, "rear_right": right},
+            "details": {"acting_on": acting_on, "reason": reason}}
