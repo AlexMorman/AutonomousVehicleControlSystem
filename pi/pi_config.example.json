@@ -24,7 +24,7 @@
     "_comment": "Commands run from -1 to 1. A command of 1 applies max_throttle; the smallest non-zero command applies min_throttle.",
     "driver": "bonnet",
     "bonnet_i2c_address": 96,
-    "safety_timeout_s": 10.0,
+    "safety_timeout_s": 1.0,
     "max_throttle": 0.6,
     "min_throttle": 0.0,
     "deadband": 0.05,

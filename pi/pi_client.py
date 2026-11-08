@@ -52,7 +52,7 @@ DEFAULTS = {
     "motors": {
         "driver": "bonnet",         # "bonnet" or "dry-run"
         "bonnet_i2c_address": 96,   # 96 = 0x60, the Bonnet's default
-        "safety_timeout_s": 10.0,
+        "safety_timeout_s": 1.0,    # no command this long -> stop the motors
         "max_throttle": 0.6,        # power applied for a command of +/-1
         "min_throttle": 0.0,        # power applied for the smallest non-zero command
         "deadband": 0.05,           # commands smaller than this are treated as 0
