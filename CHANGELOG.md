@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-11-07, third round: removing runtime traces
+
+### History rewritten (before the repository was first pushed)
+
+No commit contains runtime output or details of the test environment:
+
+- Removed from every commit: the 20 sample frames with their manifest and
+  README, and the original design-conversation handoff document. The two
+  commits that only added them no longer exist, and their entries were
+  taken out of this changelog.
+- Replaced in every commit: the laptop's IP address in
+  `pi_config.example.json` and the docs became `<laptop-ip>`, and the Pi's
+  username and hostname in `docs/Local_Instructions.md` became `<pi-user>`
+  and `<pi-hostname>`. So the baseline's example config now holds a
+  placeholder host instead of the address that was used.
+- Rewritten in every version of `README.md`, `docs/KNOWN_ISSUES.md` and this
+  changelog: figures and examples taken from test-drive recordings
+  (latencies, session and frame counts, detected class names, specific
+  frames) are now general statements. Each old commit keeps its own
+  version of these files; nothing from later was copied backwards.
+
+### Drop the .local idea, accept hard resets, document seq
+
+- `README.md`: removed the note suggesting a `.local` hostname for the
+  laptop. That approach was rejected because it advertises the laptop on
+  every network it joins.
+- `docs/KNOWN_ISSUES.md`:
+  - The hung `decide()`, native-crash and session-hook items moved to a new
+    "Accepted" section. A hard reset is fine when something gets into a
+    bad state, and the pipeline handles the frame sequence itself.
+  - The laptop-IP item now records that `.local` was rejected.
+  - Items renumbered.
+- `server/hookup.py` (docstring only): `meta["seq"]` restarts at 1 after
+  every reconnect and counts frames sent, not camera frames, so the
+  pipeline should use `capture_time` for timing. No code change was
+  needed: `seq` was already passed to `decide()`.
+- `CHANGELOG.md`: this section.
+
+
 ## 2026-11-07, second round: preparing for the image pipeline
 
 The image pipeline (cropping, CNN, defenses) is a black box that returns

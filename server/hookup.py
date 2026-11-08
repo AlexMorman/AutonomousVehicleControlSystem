@@ -50,7 +50,11 @@ image_bytes   The image exactly as the car sent it:
                 "jpeg" / "png": a complete image file
                 "raw": width*height*3 bytes, 8-bit blue-green-red, rows top to bottom
               decode_image() below turns any of them into a numpy array.
-meta          {"seq": frame number within this connection (1, 2, 3, ...),
+meta          {"seq": frame number within this connection (1, 2, 3, ...).
+                      Restarts at 1 after every reconnect. Counts frames
+                      sent, not camera frames: the Pi always sends the
+                      newest frame, so the time between frames varies.
+                      Use capture_time for timing,
                "format": "jpeg" | "png" | "raw",
                "width": 320, "height": 240, "channels": 3,
                "capture_time": seconds since 1970 on the Pi's clock,

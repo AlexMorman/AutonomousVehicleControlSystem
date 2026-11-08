@@ -112,11 +112,6 @@ from. With the commands above that's `server/recordings/`, which git ignores.
 For the step-by-step routine over the laptop's hotspot (ssh, finding the IP),
 see [docs/Local_Instructions.md](docs/Local_Instructions.md).
 
-To skip looking up the laptop's IP every session, put its mDNS name
-(`<laptop-hostname>.local`) in `server.host`. The Pi is already reached this
-way, as `<pi-hostname>.local`. On Debian this needs `avahi-daemon` running on the
-laptop. Check with `avahi-resolve -n $(hostname).local`.
-
 ### Bring-up and tests (Pi)
 
 Lift the wheels off the ground for motor tests.
