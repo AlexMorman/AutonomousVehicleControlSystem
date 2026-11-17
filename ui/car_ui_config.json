@@ -1,0 +1,29 @@
+{
+  "_comment": "Car UI settings. Keys starting with '_' are notes and are ignored. Anything left out uses the built-in default.",
+
+  "_password": "Leave empty: the password is read from server_config (server.py's config), so it's only set in one place. The web page itself has no password.",
+  "password": "",
+  "server_config": "../server/server_config.json",
+
+  "_car_listen": "The Pi connects here: set the Pi's server.port to this port.",
+  "car_listen": {"host": "0.0.0.0", "port": 5006},
+
+  "_server": "Where server.py runs (normally this same laptop).",
+  "server": {"host": "127.0.0.1", "port": 5005, "connect_timeout_s": 1.0, "reply_timeout_s": 2.0, "retry_s": 2.0},
+
+  "_web": "The web page: http://localhost:8080 here, http://<laptop-ip>:8080 from a phone on the same network.",
+  "web": {"host": "0.0.0.0", "port": 8080},
+
+  "idle_timeout_s": 10.0,
+
+  "_start_mode": "auto, hold or manual. hold = the car never moves until you choose otherwise on the page.",
+  "start_mode": "hold",
+  "start_ai": true,
+
+  "_manual_timeout_s": "Manual mode: if the page sends nothing for this long, the car is stopped.",
+  "manual_timeout_s": 0.5,
+
+  "_dirs": "Relative paths are inside the ui/ folder.",
+  "snapshots_dir": "snapshots",
+  "clips_dir": "clips"
+}

@@ -1,0 +1,6 @@
+# Pictures and recordings taken from the page.
+snapshots/
+clips/
+
+# Personal notes, kept out of git.
+README_detailed.md

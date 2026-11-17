@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Car UI</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --text: #1b1f24; --muted: #667080; --line: #dde1e6;
+    --accent: #2563eb; --accent-text: #ffffff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+    --chip: #eef0f3; --video-bg: #0d0f12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111316; --panel: #1a1d21; --text: #e7e9ec; --muted: #9aa3ad; --line: #2b3036;
+      --accent: #3b82f6; --accent-text: #ffffff; --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444;
+      --chip: #23272c; --video-bg: #000000;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+           padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 17px; margin: 0 8px 0 0; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+          border-radius: 999px; background: var(--chip); font-size: 13px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; padding: 16px;
+         max-width: 1200px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+              margin: 0 0 10px; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  .video { position: relative; background: var(--video-bg); border-radius: 10px; overflow: hidden;
+           aspect-ratio: 4 / 3; }
+  .video img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .video .placeholder { position: absolute; inset: 0; display: flex; align-items: center;
+                        justify-content: center; color: #9aa3ad; text-align: center; padding: 16px; }
+  .overlay { position: absolute; left: 10px; top: 10px; padding: 6px 10px; border-radius: 6px;
+             background: rgba(0,0,0,.6); color: #fff; font-weight: 600; font-size: 16px; }
+  .rec-badge { position: absolute; right: 10px; top: 10px; padding: 4px 10px; border-radius: 6px;
+               background: #b91c1c; color: #fff; font-weight: 600; font-size: 13px; }
+
+  .estop { width: 100%; padding: 16px; font-size: 20px; font-weight: 700; border: 0; border-radius: 10px;
+           background: var(--bad); color: #fff; cursor: pointer; }
+  .estop small { display: block; font-size: 12px; font-weight: 500; opacity: .85; }
+
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line);
+         border-radius: 8px; overflow: hidden; }
+  .seg button { padding: 9px 0; border: 0; background: transparent; color: var(--text);
+                font: inherit; font-weight: 600; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent); color: var(--accent-text); }
+
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .hint.warn { color: var(--warn); }
+  label.switch { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  label.switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  table.motors { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+  table.motors th, table.motors td { padding: 4px 6px; text-align: right; }
+  table.motors th:first-child, table.motors td:first-child { text-align: left; color: var(--muted); font-weight: 500; }
+  table.motors thead th { color: var(--muted); font-weight: 500; font-size: 12px; }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 260px; margin: 0 auto; }
+  .pad button { aspect-ratio: 1.4; font-size: 22px; border-radius: 10px; border: 1px solid var(--line);
+                background: var(--chip); color: var(--text); cursor: pointer; touch-action: none;
+                user-select: none; -webkit-user-select: none; }
+  .pad button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .pad button:disabled, .btn:disabled { opacity: .4; cursor: not-allowed; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=text], input[type=number] {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); font: inherit; }
+  input[type=number] { width: 70px; }
+  .btn { padding: 9px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--chip);
+         color: var(--text); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .btn.rec { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .btns { display: flex; gap: 8px; margin-top: 10px; }
+  .btns .btn { flex: 1; }
+  .msg { font-size: 13px; margin-top: 8px; color: var(--muted); word-break: break-all; min-height: 1.4em; }
+  .msg.err { color: var(--bad); }
+  .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .thumbs a { display: block; aspect-ratio: 4/3; background: var(--video-bg); border-radius: 6px; overflow: hidden; }
+  .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  kbd { font: 12px ui-monospace, monospace; padding: 1px 5px; border: 1px solid var(--line);
+        border-radius: 4px; background: var(--chip); }
+
+  @media (max-width: 860px) {
+    /* Phone: one column, in the order you need while driving. */
+    main { grid-template-columns: minmax(0, 1fr); }
+    .col { display: contents; }
+    .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; } .o4 { order: 4; } .o5 { order: 5; } .o6 { order: 6; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Car UI</h1>
+  <span class="chip"><span class="dot" id="car-dot"></span><span id="car-text">Car: waiting</span></span>
+  <span class="chip"><span class="dot" id="srv-dot"></span><span id="srv-text">AI: …</span></span>
+  <span class="chip" id="fps">— fps</span>
+  <span class="chip" id="model-ms">model — ms</span>
+</header>
+
+<main>
+  <div class="col">
+    <div class="video o1">
+      <img id="stream" alt="Live camera view">
+      <div class="placeholder" id="placeholder">Waiting for the car…<br>Start pi_client.py with server.port set to the car UI's port.</div>
+      <div class="overlay" id="overlay" hidden></div>
+      <div class="rec-badge" id="rec-badge" hidden>● REC</div>
+    </div>
+
+    <div class="panel o5">
+      <h2>Model and motors</h2>
+      <table class="motors">
+        <thead><tr><th></th><th>Front L</th><th>Front R</th><th>Rear L</th><th>Rear R</th></tr></thead>
+        <tbody>
+          <tr><td>Model wants</td><td id="m-fl">—</td><td id="m-fr">—</td><td id="m-rl">—</td><td id="m-rr">—</td></tr>
+          <tr><td>Sent to car</td><td id="s-fl">—</td><td id="s-fr">—</td><td id="s-rl">—</td><td id="s-rr">—</td></tr>
+        </tbody>
+      </table>
+      <div class="hint" id="reason"></div>
+      <div class="hint">1.00 = the Pi's max_throttle (60% power with the current config).</div>
+    </div>
+
+    <div class="panel o4">
+      <h2>Pictures and recording</h2>
+      <input type="text" id="name" placeholder="Name (optional), e.g. stop_sticker_2m" maxlength="60">
+      <div class="btns">
+        <button class="btn primary" id="snap">📷 Take picture <kbd>P</kbd></button>
+        <button class="btn" id="rec">● Record</button>
+      </div>
+      <div class="msg" id="save-msg"></div>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <button class="estop o2" id="estop">STOP<small>switches to Hold · <kbd style="color:inherit;background:transparent">Space</kbd></small></button>
+
+    <div class="panel o3">
+      <h2>Mode</h2>
+      <div class="seg" id="modes">
+        <button data-mode="auto">Auto</button>
+        <button data-mode="hold">Hold</button>
+        <button data-mode="manual">Manual</button>
+      </div>
+      <div class="hint" id="mode-hint"></div>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="ai"> AI (detector + classifier)</label>
+      </div>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="show-pred" checked> Show prediction on video</label>
+      </div>
+    </div>
+
+    <div class="panel o3">
+      <h2>Drive (Manual mode)</h2>
+      <div class="pad" id="pad">
+        <span></span><button data-dir="fwd" title="Forward (W / ↑)">▲</button><span></span>
+        <button data-dir="left" title="Left (A / ←)">◀</button>
+        <button data-dir="stop" title="Stop">■</button>
+        <button data-dir="right" title="Right (D / →)">▶</button>
+        <span></span><button data-dir="back" title="Reverse (S / ↓)">▼</button><span></span>
+      </div>
+      <div class="row"><span>Speed</span><span id="speed-val">50%</span></div>
+      <input type="range" id="speed" min="10" max="100" step="5" value="50">
+      <div class="row">
+        <span>Go straight for</span>
+        <span><input type="number" id="go-secs" min="0.5" max="30" step="0.5" value="2"> s</span>
+        <button class="btn" id="go">Go</button>
+      </div>
+      <div class="hint">Hold a button, or use <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys. The car stops when you let go, or if this page goes quiet.</div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const MOTORS = ["front_left", "front_right", "rear_left", "rear_right"];
+const SHORT = {front_left: "fl", front_right: "fr", rear_left: "rl", rear_right: "rr"};
+const TURN_RATIO = 0.3;   // inner wheels' share of speed when turning while moving
+
+let st = null;            // latest /api/state
+const held = new Set();   // directions currently held: fwd, back, left, right
+let goUntil = 0;          // "go straight for N s" end time (ms)
+
+// ---------- talking to car_ui.py ----------
+async function post(path, body = {}) {
+  const r = await fetch(path, {method: "POST", body: JSON.stringify(body),
+    headers: {"Content-Type": "application/json"}});
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+
+// ---------- live view ----------
+const img = $("stream");
+function startStream() { img.src = "/stream.mjpg?t=" + Date.now(); }
+img.onerror = () => setTimeout(startStream, 1000);
+startStream();
+
+// ---------- status ----------
+function fmt(v) { return typeof v === "number" ? (v >= 0 ? "+" : "") + v.toFixed(2) : "—"; }
+function setDot(id, cls) { $(id).className = "dot " + (cls || ""); }
+
+function render() {
+  if (!st) return;
+  const last = st.last || {};
+  setDot("car-dot", st.car ? "ok" : "");
+  $("car-text").textContent = st.car ? "Car: connected" : "Car: waiting";
+  $("placeholder").hidden = !!st.car && st.frame_id > 0;
+  img.style.visibility = st.car ? "visible" : "hidden";
+
+  if (!st.ai) { setDot("srv-dot", ""); $("srv-text").textContent = "AI: off"; }
+  else if (st.server_ok) { setDot("srv-dot", "ok"); $("srv-text").textContent = "AI: on"; }
+  else if (st.server_error) { setDot("srv-dot", "bad"); $("srv-text").textContent = "AI: server.py unreachable"; }
+  else { setDot("srv-dot", "warn"); $("srv-text").textContent = st.car ? "AI: connecting" : "AI: on (idle)"; }
+  $("srv-text").title = st.server_error || "";
+  $("fps").textContent = st.car ? `${st.fps} fps` : "— fps";
+  $("model-ms").textContent = `model ${last.model_ms != null && st.car ? Math.round(last.model_ms) : "—"} ms`;
+
+  const ov = $("overlay");
+  const pred = st.car && st.ai && last.ai;
+  ov.hidden = !($("show-pred").checked && pred);
+  if (pred) ov.textContent = last.label ? `${last.label}  ${(last.score ?? 0).toFixed(2)}` : "no sign";
+
+  for (const m of MOTORS) {
+    $("m-" + SHORT[m]).textContent = st.car && last.model_motors ? fmt(last.model_motors[m]) : "—";
+    $("s-" + SHORT[m]).textContent = st.car && last.sent_motors ? fmt(last.sent_motors[m]) : "—";
+  }
+  $("reason").textContent = st.car && last.mode_reason ? "Why: " + last.mode_reason : "";
+
+  for (const b of document.querySelectorAll("#modes button")) b.classList.toggle("on", b.dataset.mode === st.mode);
+  const hints = {
+    auto: st.ai ? "The model drives the car." : "AI is off, so Auto sends stop. Turn AI on, or use Manual.",
+    hold: "The car stays stopped." + (st.ai ? " The model still runs, so you can see what it would do." : ""),
+    manual: "You drive with the pad or keys below.",
+  };
+  $("mode-hint").textContent = hints[st.mode];
+  $("mode-hint").className = "hint" + (st.mode === "auto" && !st.ai ? " warn" : "");
+  if (document.activeElement !== $("ai")) $("ai").checked = st.ai;
+
+  const manual = st.mode === "manual";
+  for (const b of document.querySelectorAll("#pad button")) b.disabled = !manual;
+  $("go").disabled = !manual;
+
+  const rec = st.recording;
+  $("rec-badge").hidden = !rec;
+  if (rec) $("rec-badge").textContent = `● REC ${rec.seconds}s · ${rec.frames} frames`;
+  $("rec").textContent = rec ? "■ Stop recording" : "● Record";
+  $("rec").className = "btn" + (rec ? " rec" : "");
+}
+
+async function poll() {
+  try { st = await (await fetch("/api/state")).json(); render(); } catch (e) {}
+  setTimeout(poll, 200);
+}
+poll();
+
+// ---------- controls ----------
+async function act(fn) { try { await fn(); } catch (e) { alert(e.message); } }
+$("estop").onclick = () => { held.clear(); goUntil = 0; act(() => post("/api/stop")); };
+for (const b of document.querySelectorAll("#modes button"))
+  b.onclick = () => { held.clear(); goUntil = 0; act(() => post("/api/mode", {mode: b.dataset.mode})); };
+$("ai").onchange = (e) => act(() => post("/api/ai", {enabled: e.target.checked}));
+$("show-pred").onchange = render;
+try {
+  const saved = localStorage.getItem("carlink-ui-showpred");
+  if (saved !== null) $("show-pred").checked = saved === "1";
+  $("show-pred").addEventListener("change", (e) => localStorage.setItem("carlink-ui-showpred", e.target.checked ? "1" : "0"));
+} catch (e) {}
+
+// ---------- manual driving ----------
+$("speed").oninput = () => { $("speed-val").textContent = $("speed").value + "%"; };
+
+function manualMotors() {
+  const s = Number($("speed").value) / 100;
+  let t = (held.has("fwd") ? 1 : 0) - (held.has("back") ? 1 : 0);
+  const r = (held.has("right") ? 1 : 0) - (held.has("left") ? 1 : 0);
+  if (Date.now() < goUntil) t = 1;
+  let left = 0, right = 0;
+  if (t !== 0) {
+    left = right = t * s;
+    if (r > 0) right *= TURN_RATIO;
+    if (r < 0) left *= TURN_RATIO;
+  } else if (r !== 0) {          // spin on the spot
+    left = r * s; right = -r * s;
+  }
+  return {front_left: left, rear_left: left, front_right: right, rear_right: right};
+}
+
+function renderPad() {
+  for (const b of document.querySelectorAll("#pad button"))
+    b.classList.toggle("active", held.has(b.dataset.dir) || (b.dataset.dir === "fwd" && Date.now() < goUntil));
+}
+
+// Heartbeat: while in Manual mode, send the current command 10 times a second.
+// If these stop arriving (tab closed, phone asleep, Wi-Fi dropped), car_ui.py stops the car.
+let sending = false;
+setInterval(async () => {
+  renderPad();
+  if (!st || st.mode !== "manual" || sending || document.hidden) return;
+  sending = true;
+  try { await post("/api/manual", {motors: manualMotors()}); } catch (e) {} finally { sending = false; }
+}, 100);
+
+for (const b of document.querySelectorAll("#pad button")) {
+  const dir = b.dataset.dir;
+  if (dir === "stop") { b.onclick = () => { held.clear(); goUntil = 0; }; continue; }
+  b.addEventListener("pointerdown", (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); held.add(dir); });
+  const release = () => held.delete(dir);
+  b.addEventListener("pointerup", release);
+  b.addEventListener("pointercancel", release);
+  b.addEventListener("lostpointercapture", release);
+}
+$("go").onclick = () => { goUntil = Date.now() + Number($("go-secs").value || 0) * 1000; };
+
+const KEYS = {ArrowUp: "fwd", KeyW: "fwd", ArrowDown: "back", KeyS: "back",
+              ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right"};
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" && e.target.type !== "checkbox" && e.target.type !== "range") return;
+  if (e.code === "Space") { e.preventDefault(); $("estop").click(); return; }
+  if (e.code === "KeyP") { e.preventDefault(); $("snap").click(); return; }
+  if (KEYS[e.code] && st && st.mode === "manual") { e.preventDefault(); held.add(KEYS[e.code]); }
+});
+document.addEventListener("keyup", (e) => { if (KEYS[e.code]) held.delete(KEYS[e.code]); });
+window.addEventListener("blur", () => held.clear());
+document.addEventListener("visibilitychange", () => { if (document.hidden) { held.clear(); goUntil = 0; } });
+
+// ---------- pictures and recording ----------
+function saveMsg(text, err) { $("save-msg").textContent = text; $("save-msg").className = "msg" + (err ? " err" : ""); }
+
+async function loadThumbs() {
+  try {
+    const files = await (await fetch("/api/snapshots")).json();
+    $("thumbs").innerHTML = "";
+    for (const f of files) {
+      const a = document.createElement("a");
+      a.href = "/files/" + encodeURI(f); a.target = "_blank"; a.title = f.split("/").pop();
+      const i = document.createElement("img"); i.src = a.href; i.loading = "lazy"; i.alt = a.title;
+      a.appendChild(i); $("thumbs").appendChild(a);
+    }
+  } catch (e) {}
+}
+loadThumbs();
+
+$("snap").onclick = async () => {
+  try { const r = await post("/api/snapshot", {name: $("name").value}); saveMsg("Saved " + r.file); loadThumbs(); }
+  catch (e) { saveMsg(e.message, true); }
+};
+$("rec").onclick = async () => {
+  try {
+    if (st && st.recording) { const r = await post("/api/record", {action: "stop"}); saveMsg(`Saved ${r.frames} frames to ${r.dir}`); }
+    else { const r = await post("/api/record", {action: "start", name: $("name").value}); saveMsg("Recording to " + r.dir); }
+  } catch (e) { saveMsg(e.message, true); }
+};
+
+</script>
+</body>
+</html>
