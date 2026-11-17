@@ -16,8 +16,8 @@
 
   "idle_timeout_s": 10.0,
 
-  "_start_mode": "auto, hold or manual. hold = the car never moves until you choose otherwise on the page.",
-  "start_mode": "hold",
+  "_start_mode": "auto or manual. manual = the car stays stopped until you drive it from the page.",
+  "start_mode": "manual",
   "start_ai": true,
 
   "_manual_timeout_s": "Manual mode: if the page sends nothing for this long, the car is stopped.",

@@ -11,10 +11,11 @@ For every frame the Pi sends, car_ui.py
   1. keeps a copy for the web page (and for pictures / recordings),
   2. if AI is on, forwards the frame to server.py and reads the model's answer,
   3. sends the Pi a motor command chosen by the mode set on the page:
-        auto    the model's motor values (stop if AI is off)
-        hold    stop (the model still runs if AI is on, so you see its answer)
-        manual  the buttons / keys pressed on the page; stop if the page goes
-                quiet for manual_timeout_s (tab closed, Wi-Fi dropped)
+        auto    the model drives (AI is always on in this mode)
+        manual  the buttons / keys pressed on the page, so stop when nothing
+                is pressed; also stop if the page goes quiet for
+                manual_timeout_s (tab closed, Wi-Fi dropped). AI can be on
+                (the model runs and its answer is shown) or off.
 
 To use it, point the Pi's server.port at 5006 (server.host stays the laptop's
 IP). To stop using it, point the Pi back at 5005: nothing else changes.
@@ -55,14 +56,14 @@ DEFAULTS = {
     "password": "",                       # car link only; "" = take it from server_config
     "server_config": "../server/server_config.json",  # where that password is read from
     "idle_timeout_s": 10.0,               # no frame from the Pi this long -> drop it
-    "start_mode": "hold",                 # auto, hold or manual
+    "start_mode": "manual",               # auto or manual (manual = stopped until you drive)
     "start_ai": True,                     # forward frames to server.py at startup
     "manual_timeout_s": 0.5,              # manual mode: page quiet this long -> stop
     "snapshots_dir": "snapshots",         # relative paths are inside the ui/ folder
     "clips_dir": "clips",
 }
 
-MODES = ("auto", "hold", "manual")
+MODES = ("auto", "manual")
 STOP = {name: 0.0 for name in P.MOTOR_NAMES}
 
 
@@ -160,8 +161,8 @@ class State:
         self.cfg = cfg
         self.lock = threading.Lock()
         self.new_frame = threading.Condition(self.lock)
-        self.mode = cfg["start_mode"] if cfg["start_mode"] in MODES else "hold"
-        self.ai = bool(cfg["start_ai"])
+        self.mode = cfg["start_mode"] if cfg["start_mode"] in MODES else "manual"
+        self.ai = bool(cfg["start_ai"]) or self.mode == "auto"
         self.manual = dict(STOP)
         self.manual_at = 0.0          # monotonic time of the page's last manual message
         self.stop_size_px = None      # page's override of the stop size (px); None = server's config value
@@ -185,13 +186,11 @@ class State:
             if self.mode == "auto":
                 if model_motors is not None:
                     return model_motors, "auto: model"
-                return dict(STOP), "auto: no model answer (AI off or server down) -> stop"
-            if self.mode == "manual":
-                quiet = time.monotonic() - self.manual_at
-                if quiet <= float(self.cfg["manual_timeout_s"]):
-                    return dict(self.manual), "manual"
-                return dict(STOP), "manual: page quiet -> stop"
-            return dict(STOP), "hold"
+                return dict(STOP), "auto: no model answer (server.py down) -> stop"
+            quiet = time.monotonic() - self.manual_at
+            if quiet <= float(self.cfg["manual_timeout_s"]):
+                return dict(self.manual), "manual"
+            return dict(STOP), "manual: page quiet -> stop"
 
     def publish(self, image: bytes, meta: dict, last: dict) -> None:
         with self.lock:
@@ -551,10 +550,10 @@ def make_handler(state: State):
         def _action(self, path: str, body: dict) -> dict:
             if path == "/api/stop":                    # emergency stop
                 with state.lock:
-                    state.mode = "hold"
+                    state.mode = "manual"
                     state.manual = dict(STOP)
-                log.info("page: EMERGENCY STOP -> hold")
-                return {"mode": "hold"}
+                log.info("page: EMERGENCY STOP -> manual, stopped")
+                return {"mode": "manual"}
             if path == "/api/mode":
                 mode = body.get("mode")
                 if mode not in MODES:
@@ -562,11 +561,15 @@ def make_handler(state: State):
                 with state.lock:
                     state.mode = mode
                     state.manual = dict(STOP)
+                    if mode == "auto":
+                        state.ai = True        # the model is what drives in Auto
                 log.info("page: mode -> %s", mode)
                 return {"mode": mode}
             if path == "/api/ai":
                 with state.lock:
                     state.ai = bool(body.get("enabled"))
+                    if not state.ai and state.mode == "auto":
+                        state.mode, state.manual = "manual", dict(STOP)   # nothing left to drive
                     ai = state.ai
                 log.info("page: AI %s", "on" if ai else "off")
                 return {"ai": ai}

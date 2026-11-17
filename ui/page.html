@@ -28,75 +28,66 @@
           border-radius: 999px; background: var(--chip); font-size: 13px; white-space: nowrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
   .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; padding: 16px;
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px;
          max-width: 1200px; margin: 0 auto; }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
-              margin: 0 0 10px; }
   .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
   .video { position: relative; background: var(--video-bg); border-radius: 10px; overflow: hidden;
            aspect-ratio: 4 / 3; }
   .video img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .video .placeholder { position: absolute; inset: 0; display: flex; align-items: center;
-                        justify-content: center; color: #9aa3ad; text-align: center; padding: 16px; }
-  .overlay { position: absolute; left: 10px; top: 10px; padding: 6px 10px; border-radius: 6px;
-             background: rgba(0,0,0,.6); color: #fff; font-weight: 600; font-size: 16px; }
-  .rec-badge { position: absolute; right: 10px; top: 10px; padding: 4px 10px; border-radius: 6px;
-               background: #b91c1c; color: #fff; font-weight: 600; font-size: 13px; }
+                        justify-content: center; color: #9aa3ad; }
+  .tag { position: absolute; padding: 5px 10px; border-radius: 6px; background: rgba(0,0,0,.6);
+         color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #overlay { left: 10px; top: 10px; font-size: 16px; }
+  #motors { left: 10px; bottom: 10px; font-size: 13px; font-weight: 500; }
+  #rec-badge { right: 10px; top: 10px; font-size: 13px; background: #b91c1c; }
 
   .estop { width: 100%; padding: 16px; font-size: 20px; font-weight: 700; border: 0; border-radius: 10px;
            background: var(--bad); color: #fff; cursor: pointer; }
-  .estop small { display: block; font-size: 12px; font-weight: 500; opacity: .85; }
 
-  .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line);
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line);
          border-radius: 8px; overflow: hidden; }
-  .seg button { padding: 9px 0; border: 0; background: transparent; color: var(--text);
+  .seg button { padding: 10px 0; border: 0; background: transparent; color: var(--text);
                 font: inherit; font-weight: 600; cursor: pointer; }
   .seg button + button { border-left: 1px solid var(--line); }
   .seg button.on { background: var(--accent); color: var(--accent-text); }
 
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-  .hint { color: var(--muted); font-size: 13px; margin-top: 8px; }
-  .hint.warn { color: var(--warn); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+  .muted { color: var(--muted); font-size: 13px; }
   label.switch { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
   label.switch input { width: 18px; height: 18px; accent-color: var(--accent); }
 
-  table.motors { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
-  table.motors th, table.motors td { padding: 4px 6px; text-align: right; }
-  table.motors th:first-child, table.motors td:first-child { text-align: left; color: var(--muted); font-weight: 500; }
-  table.motors thead th { color: var(--muted); font-weight: 500; font-size: 12px; }
-
-  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 260px; margin: 0 auto; }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 240px; margin: 14px auto 0; }
   .pad button { aspect-ratio: 1.4; font-size: 22px; border-radius: 10px; border: 1px solid var(--line);
                 background: var(--chip); color: var(--text); cursor: pointer; touch-action: none;
                 user-select: none; -webkit-user-select: none; }
   .pad button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  .pad button:disabled, .btn:disabled { opacity: .4; cursor: not-allowed; }
-  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
   input[type=text], input[type=number] {
     width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
     background: var(--bg); color: var(--text); font: inherit; }
-  input[type=number] { width: 70px; }
+  input[type=number] { width: 64px; }
   .btn { padding: 9px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--chip);
          color: var(--text); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   .btn.rec { background: var(--bad); border-color: var(--bad); color: #fff; }
   .btns { display: flex; gap: 8px; margin-top: 10px; }
   .btns .btn { flex: 1; }
-  .msg { font-size: 13px; margin-top: 8px; color: var(--muted); word-break: break-all; min-height: 1.4em; }
+  .msg { font-size: 13px; margin-top: 8px; color: var(--muted); word-break: break-all; }
+  .msg:empty { display: none; }
   .msg.err { color: var(--bad); }
   .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .thumbs:empty { display: none; }
   .thumbs a { display: block; aspect-ratio: 4/3; background: var(--video-bg); border-radius: 6px; overflow: hidden; }
   .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  kbd { font: 12px ui-monospace, monospace; padding: 1px 5px; border: 1px solid var(--line);
-        border-radius: 4px; background: var(--chip); }
 
   @media (max-width: 860px) {
     /* Phone: one column, in the order you need while driving. */
     main { grid-template-columns: minmax(0, 1fr); }
     .col { display: contents; }
-    .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; } .o4 { order: 4; } .o5 { order: 5; } .o6 { order: 6; }
+    .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; } .o4 { order: 4; }
   }
 </style>
 </head>
@@ -105,38 +96,24 @@
 <header>
   <h1>Car UI</h1>
   <span class="chip"><span class="dot" id="car-dot"></span><span id="car-text">Car: waiting</span></span>
-  <span class="chip"><span class="dot" id="srv-dot"></span><span id="srv-text">AI: …</span></span>
-  <span class="chip" id="fps">— fps</span>
-  <span class="chip" id="model-ms">model — ms</span>
+  <span class="chip"><span class="dot" id="srv-dot"></span><span id="srv-text">AI</span></span>
+  <span class="chip" id="fps" hidden></span>
 </header>
 
 <main>
   <div class="col">
     <div class="video o1">
       <img id="stream" alt="Live camera view">
-      <div class="placeholder" id="placeholder">Waiting for the car…<br>Start pi_client.py with server.port set to the car UI's port.</div>
-      <div class="overlay" id="overlay" hidden></div>
-      <div class="rec-badge" id="rec-badge" hidden>● REC</div>
-    </div>
-
-    <div class="panel o5">
-      <h2>Model and motors</h2>
-      <table class="motors">
-        <thead><tr><th></th><th>Front L</th><th>Front R</th><th>Rear L</th><th>Rear R</th></tr></thead>
-        <tbody>
-          <tr><td>Model wants</td><td id="m-fl">—</td><td id="m-fr">—</td><td id="m-rl">—</td><td id="m-rr">—</td></tr>
-          <tr><td>Sent to car</td><td id="s-fl">—</td><td id="s-fr">—</td><td id="s-rl">—</td><td id="s-rr">—</td></tr>
-        </tbody>
-      </table>
-      <div class="hint" id="reason"></div>
-      <div class="hint">1.00 = the Pi's max_throttle (60% power with the current config).</div>
+      <div class="placeholder" id="placeholder">Waiting for the car…</div>
+      <div class="tag" id="overlay" hidden></div>
+      <div class="tag" id="motors" hidden></div>
+      <div class="tag" id="rec-badge" hidden></div>
     </div>
 
     <div class="panel o4">
-      <h2>Pictures and recording</h2>
-      <input type="text" id="name" placeholder="Name (optional), e.g. stop_sticker_2m" maxlength="60">
+      <input type="text" id="name" placeholder="Name (optional)" maxlength="60">
       <div class="btns">
-        <button class="btn primary" id="snap">📷 Take picture <kbd>P</kbd></button>
+        <button class="btn primary" id="snap" title="P">📷 Take picture</button>
         <button class="btn" id="rec">● Record</button>
       </div>
       <div class="msg" id="save-msg"></div>
@@ -145,46 +122,46 @@
   </div>
 
   <div class="col">
-    <button class="estop o2" id="estop">STOP<small>switches to Hold · <kbd style="color:inherit;background:transparent">Space</kbd></small></button>
+    <button class="estop o2" id="estop" title="Space">STOP</button>
 
     <div class="panel o3">
-      <h2>Mode</h2>
       <div class="seg" id="modes">
         <button data-mode="auto">Auto</button>
-        <button data-mode="hold">Hold</button>
         <button data-mode="manual">Manual</button>
       </div>
-      <div class="hint" id="mode-hint"></div>
-      <div class="row">
-        <label class="switch"><input type="checkbox" id="ai"> AI (detector + classifier)</label>
-      </div>
-      <div class="row">
-        <span>Stop when sign &ge; <input type="number" id="stop-px" min="5" max="240" step="1" placeholder="?"> px
-          &asymp; <input type="number" id="stop-in" min="5" max="200" step="1" placeholder="?"> in</span>
-      </div>
-      <div class="hint" id="sign-now"></div>
-      <div class="row">
-        <label class="switch"><input type="checkbox" id="show-pred" checked> Show prediction on video</label>
-      </div>
-    </div>
 
-    <div class="panel o3">
-      <h2>Drive (Manual mode)</h2>
-      <div class="pad" id="pad">
-        <span></span><button data-dir="fwd" title="Forward (W / ↑)">▲</button><span></span>
-        <button data-dir="left" title="Left (A / ←)">◀</button>
-        <button data-dir="stop" title="Stop">■</button>
-        <button data-dir="right" title="Right (D / →)">▶</button>
-        <span></span><button data-dir="back" title="Reverse (S / ↓)">▼</button><span></span>
+      <!-- Auto: the AI drives -->
+      <div id="auto-ui" hidden>
+        <div class="row" id="stop-row" hidden>
+          <span>Stop at sign ≥</span>
+          <span><input type="number" id="stop-px" min="5" max="240" step="1"> px
+            ≈ <input type="number" id="stop-in" min="5" max="200" step="1"> in</span>
+        </div>
       </div>
-      <div class="row"><span>Speed</span><span id="speed-val">50%</span></div>
-      <input type="range" id="speed" min="10" max="100" step="5" value="50">
-      <div class="row">
-        <span>Go straight for</span>
-        <span><input type="number" id="go-secs" min="0.5" max="30" step="0.5" value="2"> s</span>
-        <button class="btn" id="go">Go</button>
+
+      <!-- Manual: you drive -->
+      <div id="manual-ui" hidden>
+        <div class="row">
+          <label class="switch"><input type="checkbox" id="ai"> AI prediction</label>
+        </div>
+        <div class="pad" id="pad">
+          <span></span><button data-dir="fwd" title="W / ↑">▲</button><span></span>
+          <button data-dir="left" title="A / ←">◀</button>
+          <button data-dir="stop" title="Stop">■</button>
+          <button data-dir="right" title="D / →">▶</button>
+          <span></span><button data-dir="back" title="S / ↓">▼</button><span></span>
+        </div>
+        <div class="row">
+          <span>Speed</span>
+          <input type="range" id="speed" min="10" max="100" step="5" value="50">
+          <span id="speed-val" class="muted">50%</span>
+        </div>
+        <div class="row">
+          <span>Go straight</span>
+          <span><input type="number" id="go-secs" min="0.5" max="30" step="0.5" value="2"> s</span>
+          <button class="btn" id="go">Go</button>
+        </div>
       </div>
-      <div class="hint">Hold a button, or use <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys. The car stops when you let go, or if this page goes quiet.</div>
     </div>
   </div>
 </main>
@@ -192,15 +169,12 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
-const MOTORS = ["front_left", "front_right", "rear_left", "rear_right"];
-const SHORT = {front_left: "fl", front_right: "fr", rear_left: "rl", rear_right: "rr"};
 const TURN_RATIO = 0.3;   // inner wheels' share of speed when turning while moving
 
 let st = null;            // latest /api/state
 const held = new Set();   // directions currently held: fwd, back, left, right
-let goUntil = 0;          // "go straight for N s" end time (ms)
+let goUntil = 0;          // "go straight" end time (ms)
 
-// ---------- talking to car_ui.py ----------
 async function post(path, body = {}) {
   const r = await fetch(path, {method: "POST", body: JSON.stringify(body),
     headers: {"Content-Type": "application/json"}});
@@ -208,7 +182,8 @@ async function post(path, body = {}) {
   if (!r.ok) throw new Error(data.error || r.statusText);
   return data;
 }
-
+async function act(fn) { try { await fn(); } catch (e) { alert(e.message); } }
+function stopDriving() { held.clear(); goUntil = 0; }
 
 // ---------- live view ----------
 const img = $("stream");
@@ -219,60 +194,56 @@ startStream();
 // ---------- status ----------
 // inches ~= px_to_inches / px. The constant comes from server.py (sign_decider.PX_TO_INCHES).
 const toInches = px => st && st.px_to_inches && px ? Math.round(st.px_to_inches / px) : null;
-const inches = px => toInches(px) ? `\u2248 ${toInches(px)} in` : "";
-function fmt(v) { return typeof v === "number" ? (v >= 0 ? "+" : "") + v.toFixed(2) : "—"; }
+const fmt = v => typeof v === "number" ? (v >= 0 ? "+" : "") + v.toFixed(2) : "—";
 function setDot(id, cls) { $(id).className = "dot " + (cls || ""); }
 
 function render() {
   if (!st) return;
   const last = st.last || {};
+  const live = !!st.car && st.frame_id > 0;
+
   setDot("car-dot", st.car ? "ok" : "");
   $("car-text").textContent = st.car ? "Car: connected" : "Car: waiting";
-  $("placeholder").hidden = !!st.car && st.frame_id > 0;
+  $("fps").hidden = !st.car;
+  $("fps").textContent = `${st.fps} fps`;
+  if (!st.ai) { setDot("srv-dot", ""); $("srv-text").textContent = "AI off"; }
+  else if (st.server_error) { setDot("srv-dot", "bad"); $("srv-text").textContent = "AI: server.py unreachable"; }
+  else if (st.server_ok) {
+    setDot("srv-dot", "ok");
+    $("srv-text").textContent = last.model_ms != null ? `AI on · ${Math.round(last.model_ms)} ms` : "AI on";
+  } else { setDot("srv-dot", "warn"); $("srv-text").textContent = "AI on"; }
+  $("srv-text").title = st.server_error || "";
+
+  $("placeholder").hidden = live;
   img.style.visibility = st.car ? "visible" : "hidden";
 
-  if (!st.ai) { setDot("srv-dot", ""); $("srv-text").textContent = "AI: off"; }
-  else if (st.server_ok) { setDot("srv-dot", "ok"); $("srv-text").textContent = "AI: on"; }
-  else if (st.server_error) { setDot("srv-dot", "bad"); $("srv-text").textContent = "AI: server.py unreachable"; }
-  else { setDot("srv-dot", "warn"); $("srv-text").textContent = st.car ? "AI: connecting" : "AI: on (idle)"; }
-  $("srv-text").title = st.server_error || "";
-  $("fps").textContent = st.car ? `${st.fps} fps` : "— fps";
-  $("model-ms").textContent = `model ${last.model_ms != null && st.car ? Math.round(last.model_ms) : "—"} ms`;
+  // Prediction on the video, with the sign's size when the server reports it.
+  const pred = live && st.ai && last.ai;
+  $("overlay").hidden = !pred;
+  if (pred) {
+    let text = last.label ? `${last.label} ${(last.score ?? 0).toFixed(2)}` : "no sign";
+    if (last.label && last.box_px) text += ` · ${last.box_px} px` + (toInches(last.box_px) ? ` ≈ ${toInches(last.box_px)} in` : "");
+    $("overlay").textContent = text;
+  }
+  const m = last.sent_motors;
+  $("motors").hidden = !(live && m);
+  if (m) $("motors").textContent =
+    `FL ${fmt(m.front_left)}  FR ${fmt(m.front_right)}  RL ${fmt(m.rear_left)}  RR ${fmt(m.rear_right)}`;
 
-  const ov = $("overlay");
-  const pred = st.car && st.ai && last.ai;
-  ov.hidden = !($("show-pred").checked && pred);
-  if (pred) ov.textContent = last.label ? `${last.label}  ${(last.score ?? 0).toFixed(2)}` : "no sign";
-
+  // Only the controls for the current mode.
+  for (const b of document.querySelectorAll("#modes button")) b.classList.toggle("on", b.dataset.mode === st.mode);
+  $("auto-ui").hidden = st.mode !== "auto";
+  $("manual-ui").hidden = st.mode !== "manual";
+  if (document.activeElement !== $("ai")) $("ai").checked = st.ai;
+  $("stop-row").hidden = !st.stop_size_px;
   if (st.stop_size_px) {  // unknown until server.py's first answer (its config value) or a change here
     if (document.activeElement !== $("stop-px")) $("stop-px").value = st.stop_size_px;
     if (document.activeElement !== $("stop-in")) $("stop-in").value = toInches(st.stop_size_px) ?? "";
   }
-  $("sign-now").textContent = pred && last.box_px ? `Sign now: ${last.box_px} px ${inches(last.box_px)}` : "";
-
-  for (const m of MOTORS) {
-    $("m-" + SHORT[m]).textContent = st.car && last.model_motors ? fmt(last.model_motors[m]) : "—";
-    $("s-" + SHORT[m]).textContent = st.car && last.sent_motors ? fmt(last.sent_motors[m]) : "—";
-  }
-  $("reason").textContent = st.car && last.mode_reason ? "Why: " + last.mode_reason : "";
-
-  for (const b of document.querySelectorAll("#modes button")) b.classList.toggle("on", b.dataset.mode === st.mode);
-  const hints = {
-    auto: st.ai ? "The model drives the car." : "AI is off, so Auto sends stop. Turn AI on, or use Manual.",
-    hold: "The car stays stopped." + (st.ai ? " The model still runs, so you can see what it would do." : ""),
-    manual: "You drive with the pad or keys below.",
-  };
-  $("mode-hint").textContent = hints[st.mode];
-  $("mode-hint").className = "hint" + (st.mode === "auto" && !st.ai ? " warn" : "");
-  if (document.activeElement !== $("ai")) $("ai").checked = st.ai;
-
-  const manual = st.mode === "manual";
-  for (const b of document.querySelectorAll("#pad button")) b.disabled = !manual;
-  $("go").disabled = !manual;
 
   const rec = st.recording;
   $("rec-badge").hidden = !rec;
-  if (rec) $("rec-badge").textContent = `● REC ${rec.seconds}s · ${rec.frames} frames`;
+  if (rec) $("rec-badge").textContent = `● REC ${rec.seconds}s`;
   $("rec").textContent = rec ? "■ Stop recording" : "● Record";
   $("rec").className = "btn" + (rec ? " rec" : "");
 }
@@ -283,24 +254,17 @@ async function poll() {
 }
 poll();
 
-// ---------- controls ----------
-async function act(fn) { try { await fn(); } catch (e) { alert(e.message); } }
-$("estop").onclick = () => { held.clear(); goUntil = 0; act(() => post("/api/stop")); };
+// ---------- mode and settings ----------
+$("estop").onclick = () => { stopDriving(); act(() => post("/api/stop")); };
 for (const b of document.querySelectorAll("#modes button"))
-  b.onclick = () => { held.clear(); goUntil = 0; act(() => post("/api/mode", {mode: b.dataset.mode})); };
+  b.onclick = () => { stopDriving(); act(() => post("/api/mode", {mode: b.dataset.mode})); };
 $("ai").onchange = (e) => act(() => post("/api/ai", {enabled: e.target.checked}));
-$("show-pred").onchange = render;
 $("stop-px").onchange = () => act(() => post("/api/stop_size", {px: +$("stop-px").value}));
 // Typing inches sets px (px = px_to_inches / inches); the car itself only uses px.
 $("stop-in").onchange = () => {
   const inch = +$("stop-in").value;
   if (inch > 0 && st && st.px_to_inches) act(() => post("/api/stop_size", {px: Math.round(st.px_to_inches / inch)}));
 };
-try {
-  const saved = localStorage.getItem("carlink-ui-showpred");
-  if (saved !== null) $("show-pred").checked = saved === "1";
-  $("show-pred").addEventListener("change", (e) => localStorage.setItem("carlink-ui-showpred", e.target.checked ? "1" : "0"));
-} catch (e) {}
 
 // ---------- manual driving ----------
 $("speed").oninput = () => { $("speed-val").textContent = $("speed").value + "%"; };
@@ -321,16 +285,12 @@ function manualMotors() {
   return {front_left: left, rear_left: left, front_right: right, rear_right: right};
 }
 
-function renderPad() {
-  for (const b of document.querySelectorAll("#pad button"))
-    b.classList.toggle("active", held.has(b.dataset.dir) || (b.dataset.dir === "fwd" && Date.now() < goUntil));
-}
-
-// Heartbeat: while in Manual mode, send the current command 10 times a second.
-// If these stop arriving (tab closed, phone asleep, Wi-Fi dropped), car_ui.py stops the car.
+// Heartbeat: in Manual, send the current command 10 times a second (zeros when
+// nothing is pressed). If these stop arriving, car_ui.py stops the car.
 let sending = false;
 setInterval(async () => {
-  renderPad();
+  for (const b of document.querySelectorAll("#pad button"))
+    b.classList.toggle("active", held.has(b.dataset.dir) || (b.dataset.dir === "fwd" && Date.now() < goUntil));
   if (!st || st.mode !== "manual" || sending || document.hidden) return;
   sending = true;
   try { await post("/api/manual", {motors: manualMotors()}); } catch (e) {} finally { sending = false; }
@@ -338,7 +298,7 @@ setInterval(async () => {
 
 for (const b of document.querySelectorAll("#pad button")) {
   const dir = b.dataset.dir;
-  if (dir === "stop") { b.onclick = () => { held.clear(); goUntil = 0; }; continue; }
+  if (dir === "stop") { b.onclick = stopDriving; continue; }
   b.addEventListener("pointerdown", (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); held.add(dir); });
   const release = () => held.delete(dir);
   b.addEventListener("pointerup", release);
@@ -357,7 +317,7 @@ document.addEventListener("keydown", (e) => {
 });
 document.addEventListener("keyup", (e) => { if (KEYS[e.code]) held.delete(KEYS[e.code]); });
 window.addEventListener("blur", () => held.clear());
-document.addEventListener("visibilitychange", () => { if (document.hidden) { held.clear(); goUntil = 0; } });
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopDriving(); });
 
 // ---------- pictures and recording ----------
 function saveMsg(text, err) { $("save-msg").textContent = text; $("save-msg").className = "msg" + (err ? " err" : ""); }
@@ -366,7 +326,7 @@ async function loadThumbs() {
   try {
     const files = await (await fetch("/api/snapshots")).json();
     $("thumbs").innerHTML = "";
-    for (const f of files) {
+    for (const f of files.slice(0, 8)) {
       const a = document.createElement("a");
       a.href = "/files/" + encodeURI(f); a.target = "_blank"; a.title = f.split("/").pop();
       const i = document.createElement("img"); i.src = a.href; i.loading = "lazy"; i.alt = a.title;
@@ -377,16 +337,15 @@ async function loadThumbs() {
 loadThumbs();
 
 $("snap").onclick = async () => {
-  try { const r = await post("/api/snapshot", {name: $("name").value}); saveMsg("Saved " + r.file); loadThumbs(); }
+  try { const r = await post("/api/snapshot", {name: $("name").value}); saveMsg("Saved " + r.file.split("/").pop()); loadThumbs(); }
   catch (e) { saveMsg(e.message, true); }
 };
 $("rec").onclick = async () => {
   try {
-    if (st && st.recording) { const r = await post("/api/record", {action: "stop"}); saveMsg(`Saved ${r.frames} frames to ${r.dir}`); }
-    else { const r = await post("/api/record", {action: "start", name: $("name").value}); saveMsg("Recording to " + r.dir); }
+    if (st && st.recording) { const r = await post("/api/record", {action: "stop"}); saveMsg(`Saved ${r.frames} frames: ${r.dir.split("/").pop()}`); }
+    else { await post("/api/record", {action: "start", name: $("name").value}); saveMsg(""); }
   } catch (e) { saveMsg(e.message, true); }
 };
-
 </script>
 </body>
 </html>
