@@ -164,6 +164,8 @@ class State:
         self.ai = bool(cfg["start_ai"])
         self.manual = dict(STOP)
         self.manual_at = 0.0          # monotonic time of the page's last manual message
+        self.stop_size_px = None      # page's override of the stop size (px); None = server's config value
+        self.server_info = {}         # stop_size_px / px_to_inches as last reported by server.py
         self.car = None               # "ip:port" while the Pi is connected
         self.server_ok = False
         self.server_error = None
@@ -254,6 +256,8 @@ class State:
                 "frame": self.frame_meta,
                 "last": self.last,
                 "manual_timeout_s": self.cfg["manual_timeout_s"],
+                "stop_size_px": self.stop_size_px or self.server_info.get("stop_size_px"),
+                "px_to_inches": self.server_info.get("px_to_inches"),
                 "recording": None if not rec else {
                     "dir": _show(rec.dir), "frames": rec.frames,
                     "seconds": round(time.time() - rec.started)},
@@ -352,6 +356,8 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str,
 
             with state.lock:
                 ai = state.ai
+                if state.stop_size_px is not None:
+                    header = {**header, "stop_size_px": state.stop_size_px}
             reply = None
             started = time.perf_counter()
             if ai:
@@ -383,9 +389,14 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str,
             meta = {k: header.get(k) for k in ("seq", "format", "width", "height")}
             last = {"seq": seq, "time": _iso(received), "ai": ai, "mode_reason": reason,
                     "label": label, "score": score, "model_motors": model_motors,
+                    "box_px": reply.get("box_px") if reply else None,
                     "sent_motors": motors,
                     "model_ms": round(model_ms, 1) if model_ms is not None else None,
                     "round_trip_ms": header.get("last_rtt_ms")}
+            info = {k: reply.get(k) for k in ("stop_size_px", "px_to_inches") if reply and reply.get(k)}
+            if info:
+                with state.lock:
+                    state.server_info.update(info)  # kept, so the page still shows them when AI is off
             state.publish(image, meta, last)
             log.debug("frame %s: %s | %s %s", seq, reason, label, motors)
     finally:
@@ -559,6 +570,12 @@ def make_handler(state: State):
                     ai = state.ai
                 log.info("page: AI %s", "on" if ai else "off")
                 return {"ai": ai}
+            if path == "/api/stop_size":               # stop sign size that means "close"
+                px = max(5, min(240, int(body.get("px", ""))))  # bad value -> ValueError -> 400
+                with state.lock:
+                    state.stop_size_px = px
+                log.info("page: stop at sign size >= %d px", px)
+                return {"stop_size_px": px}
             if path == "/api/manual":                  # also the page's heartbeat
                 motors = _motors_from(body.get("motors", STOP))
                 with state.lock:

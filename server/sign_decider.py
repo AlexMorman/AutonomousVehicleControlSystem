@@ -53,6 +53,11 @@ UNKNOWN_SIGN = STOP     # detected a class that isn't in ACTIONS
 MIN_CONFIDENCE = 0.5    # weaker detections are treated as no sign
 HOLD_SECONDS = 1.0      # keep obeying the last sign this long after it disappears (0 = off)
 
+# Distance in inches ~= PX_TO_INCHES / (stop sign box height in px, 320x240 frame).
+# From calibration photos at 20-45 in. Only for display: the stop rule uses px.
+# This is the only copy: server.py sends it to the page in ui/.
+PX_TO_INCHES = 1070
+
 _last_sign = None
 _last_seen = 0.0
 
@@ -64,14 +69,24 @@ def decide(image_bytes, meta):
     return decide_from_sign(sign, confidence, meta)
 
 
-def decide_from_sign(sign, confidence, meta):
+def decide_from_sign(sign, confidence, meta, box_px=0, stop_size_px=None):
     """The rules on their own: (sign or None, confidence) -> a hookup decision dict.
-    Also used by server/pipeline/ until the image pipeline has its own."""
+    Also used by server/pipeline/ until the image pipeline has its own.
+
+    A stop sign is obeyed only once its box is at least stop_size_px tall (the car
+    keeps driving until then). stop_size_px comes from server_config.json via
+    pipeline.configure(); the page in ui/ can override it per frame with
+    meta["stop_size_px"]. box_px = 0 means the size is unknown (the remote CNN API
+    path): the stop sign is then obeyed at once."""
     global _last_sign, _last_seen
     if meta["seq"] == 1:  # new connection: forget the previous drive
         _last_sign, _last_seen = None, 0.0
 
     now = time.monotonic()
+    stop_size = meta.get("stop_size_px") or stop_size_px
+    detected = sign
+    if sign == "stop" and box_px and stop_size and box_px < stop_size:
+        sign = None  # stop sign still far away: act as if there is no sign and keep driving
 
     if sign is not None and confidence >= MIN_CONFIDENCE:
         _last_sign, _last_seen = sign, now
@@ -79,7 +94,7 @@ def decide_from_sign(sign, confidence, meta):
     elif _last_sign is not None and now - _last_seen < HOLD_SECONDS:
         acting_on, reason = _last_sign, "held"
     else:
-        acting_on, reason = None, "no_sign"
+        acting_on, reason = None, "stop_too_far" if detected == "stop" and sign is None else "no_sign"
     if acting_on is None:
         action = NO_SIGN
     elif acting_on in ACTIONS:
@@ -88,8 +103,10 @@ def decide_from_sign(sign, confidence, meta):
         action, reason = UNKNOWN_SIGN, reason + "_unknown_class"
 
     left, right = action
-    return {"label": sign if sign is not None else "none",
+    return {"label": detected if detected is not None else "none",
             "score": confidence,
             "motors": {"front_left": left, "rear_left": left,
                        "front_right": right, "rear_right": right},
-            "details": {"acting_on": acting_on, "reason": reason}}
+            "details": {"acting_on": acting_on, "reason": reason,
+                        "box_px": box_px, "stop_size_px": stop_size, "px_to_inches": PX_TO_INCHES,
+                        "approx_in": round(PX_TO_INCHES / box_px) if box_px else None}}

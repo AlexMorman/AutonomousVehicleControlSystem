@@ -15,6 +15,7 @@ Contents today:
         this file when the team delivers its own decide().
 """
 
+import logging
 import os
 
 # Keep the pipeline fully local: without this, Ultralytics checks for internet
@@ -30,16 +31,31 @@ from .sign_cnn import SignCNN  # noqa: E402
 # team versions its releases.
 __version__ = "sign_cnn 2026-11-06 (unversioned)"
 
+log = logging.getLogger("pipeline")
+
 _model = None
+_stop_size_px = None  # from server_config.json; the only place it is set
 
 
 def configure(options):
-    """Called once by hookup at server startup: load both models (about 1 s)."""
-    global _model
+    """Called once by hookup at server startup with decider.options: read
+    stop_size_px (required), then load both models (about 1 s)."""
+    global _model, _stop_size_px
+    value = options.get("stop_size_px")
+    if isinstance(value, bool) or not isinstance(value, int) or not 5 <= value <= 240:
+        raise SystemExit(
+            "server_config.json: decider.options.stop_size_px must be a whole number from 5 to 240 "
+            f"(got {value!r}). It is the stop sign's box height in px at which the car stops; "
+            f"inches ~= {sign_decider.PX_TO_INCHES} / px, so 30 ~= 3 ft. Example: "
+            '"options": {"stop_size_px": 30}')
+    _stop_size_px = value
+    log.info("stop sign: stop once its box is >= %d px (~%d in)",
+             value, round(sign_decider.PX_TO_INCHES / value))
     _model = SignCNN()
 
 
 def decide(image_bytes, meta):
     frame = hookup.decode_image(image_bytes, meta)
     sign, confidence = _model.predict(frame)
-    return sign_decider.decide_from_sign(sign, confidence, meta)
+    return sign_decider.decide_from_sign(sign, confidence, meta, box_px=_model.last_box_px,
+                                         stop_size_px=_stop_size_px)

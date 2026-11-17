@@ -159,6 +159,11 @@
         <label class="switch"><input type="checkbox" id="ai"> AI (detector + classifier)</label>
       </div>
       <div class="row">
+        <span>Stop when sign &ge; <input type="number" id="stop-px" min="5" max="240" step="1" placeholder="?"> px
+          &asymp; <input type="number" id="stop-in" min="5" max="200" step="1" placeholder="?"> in</span>
+      </div>
+      <div class="hint" id="sign-now"></div>
+      <div class="row">
         <label class="switch"><input type="checkbox" id="show-pred" checked> Show prediction on video</label>
       </div>
     </div>
@@ -212,6 +217,9 @@ img.onerror = () => setTimeout(startStream, 1000);
 startStream();
 
 // ---------- status ----------
+// inches ~= px_to_inches / px. The constant comes from server.py (sign_decider.PX_TO_INCHES).
+const toInches = px => st && st.px_to_inches && px ? Math.round(st.px_to_inches / px) : null;
+const inches = px => toInches(px) ? `\u2248 ${toInches(px)} in` : "";
 function fmt(v) { return typeof v === "number" ? (v >= 0 ? "+" : "") + v.toFixed(2) : "—"; }
 function setDot(id, cls) { $(id).className = "dot " + (cls || ""); }
 
@@ -235,6 +243,12 @@ function render() {
   const pred = st.car && st.ai && last.ai;
   ov.hidden = !($("show-pred").checked && pred);
   if (pred) ov.textContent = last.label ? `${last.label}  ${(last.score ?? 0).toFixed(2)}` : "no sign";
+
+  if (st.stop_size_px) {  // unknown until server.py's first answer (its config value) or a change here
+    if (document.activeElement !== $("stop-px")) $("stop-px").value = st.stop_size_px;
+    if (document.activeElement !== $("stop-in")) $("stop-in").value = toInches(st.stop_size_px) ?? "";
+  }
+  $("sign-now").textContent = pred && last.box_px ? `Sign now: ${last.box_px} px ${inches(last.box_px)}` : "";
 
   for (const m of MOTORS) {
     $("m-" + SHORT[m]).textContent = st.car && last.model_motors ? fmt(last.model_motors[m]) : "—";
@@ -276,6 +290,12 @@ for (const b of document.querySelectorAll("#modes button"))
   b.onclick = () => { held.clear(); goUntil = 0; act(() => post("/api/mode", {mode: b.dataset.mode})); };
 $("ai").onchange = (e) => act(() => post("/api/ai", {enabled: e.target.checked}));
 $("show-pred").onchange = render;
+$("stop-px").onchange = () => act(() => post("/api/stop_size", {px: +$("stop-px").value}));
+// Typing inches sets px (px = px_to_inches / inches); the car itself only uses px.
+$("stop-in").onchange = () => {
+  const inch = +$("stop-in").value;
+  if (inch > 0 && st && st.px_to_inches) act(() => post("/api/stop_size", {px: Math.round(st.px_to_inches / inch)}));
+};
 try {
   const saved = localStorage.getItem("carlink-ui-showpred");
   if (saved !== null) $("show-pred").checked = saved === "1";

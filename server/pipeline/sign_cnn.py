@@ -59,6 +59,7 @@ class SignCNN:
         self.classifier = TrafficCNN(num_classes=len(self.names))
         self.classifier.load_state_dict(saved["weights"])  # includes the normalization mean/std
         self.classifier.eval()
+        self.last_box_px = 0  # height in px of the box predict() last returned (0 = no sign)
 
     def predict(self, frame):
         """frame: OpenCV image (BGR numpy array). Returns (class_name, confidence) of the most confident
@@ -70,11 +71,13 @@ class SignCNN:
         result = self.detector.predict(image.resize((DETECTOR_SIZE, DETECTOR_SIZE)), imgsz=DETECTOR_SIZE,
                                        conf=DETECTOR_THRESHOLD, verbose=False)[0]
         if len(result.boxes) == 0:
+            self.last_box_px = 0
             return None, 0.0
         best = result.boxes.conf.argmax()
         left, top, right, bottom = result.boxes.xyxy[best].tolist()
         box = (left * W / DETECTOR_SIZE, top * H / DETECTOR_SIZE,
                right * W / DETECTOR_SIZE, bottom * H / DETECTOR_SIZE)
+        self.last_box_px = round(box[3] - box[1])  # box height in px, read by the pipeline for distance
 
         # 2. Classifier on the crop, cut from the full-resolution frame.
         crop = image.crop(box).resize((CROP_SIZE, CROP_SIZE), Image.BILINEAR)

@@ -28,6 +28,8 @@
     "dummy_throttle": 1.0,
     "_options": "Passed to the python module's configure(options). Free-form; the module decides what it needs.",
     "options": {
+      "_stop_size_px": "pipeline:decide only; optional (default 30, set in server/pipeline/__init__.py). The car stops once the stop sign's box is at least this many px tall (320x240 frame), and keeps driving until then. inches ~= 1070 / px: 30 ~= 36 in, 36 ~= 30 in, 45 ~= 24 in. 30 stopped the car in 21 of the 22 recorded drives of 2026-11-05. The page in ui/ can override it while it runs.",
+      "stop_size_px": 30,
       "_cnn_api_url": "Only for target sign_decider:decide: the remote CNN API endpoint. Ask the CNN's owner; not kept in git.",
       "cnn_api_url": ""
     }

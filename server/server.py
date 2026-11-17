@@ -159,6 +159,7 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str) -> No
                 "received_time": received,
                 "session": recorder.name if recorder else None,
                 "session_dir": str(recorder.dir) if recorder else None,
+                "stop_size_px": header.get("stop_size_px"),  # set on ui/car_ui.py's page; None = config value
             }
 
             started = time.perf_counter()
@@ -177,7 +178,10 @@ def handle_car(conn: socket.socket, addr: tuple, cfg: dict, password: str) -> No
             # Reply first, record afterwards, so disk writes never delay the car.
             P.send_message(conn, {"type": "command", "seq": meta["seq"],
                                   "label": decision.label, "score": decision.score,
-                                  "motors": decision.motors})
+                                  "motors": decision.motors,
+                                  "box_px": decision.details.get("box_px"),
+                                  "stop_size_px": decision.details.get("stop_size_px"),
+                                  "px_to_inches": decision.details.get("px_to_inches")})
             frames += 1
             log.debug("frame %d: %s (%.2f) %s, decide %.0f ms%s", meta["seq"],
                       decision.label, decision.score, decision.motors, decide_ms,
