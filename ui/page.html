@@ -130,13 +130,11 @@
         <button data-mode="manual">Manual</button>
       </div>
 
-      <!-- Auto: the AI drives -->
-      <div id="auto-ui" hidden>
-        <div class="row" id="stop-row" hidden>
-          <span>Stop at sign ≥</span>
-          <span><input type="number" id="stop-px" min="5" max="240" step="1"> px
-            ≈ <input type="number" id="stop-in" min="5" max="200" step="1"> in</span>
-        </div>
+      <!-- Both modes: set it in Manual with the car still, then switch to Auto -->
+      <div class="row" id="stop-row">
+        <span>Stop at sign ≥</span>
+        <span><input type="number" id="stop-px" min="5" max="240" step="1" placeholder="?"> px
+          ≈ <input type="number" id="stop-in" min="5" max="200" step="1" placeholder="?"> in</span>
       </div>
 
       <!-- Manual: you drive -->
@@ -232,14 +230,14 @@ function render() {
 
   // Only the controls for the current mode.
   for (const b of document.querySelectorAll("#modes button")) b.classList.toggle("on", b.dataset.mode === st.mode);
-  $("auto-ui").hidden = st.mode !== "auto";
   $("manual-ui").hidden = st.mode !== "manual";
   if (document.activeElement !== $("ai")) $("ai").checked = st.ai;
-  $("stop-row").hidden = !st.stop_size_px;
-  if (st.stop_size_px) {  // unknown until server.py's first answer (its config value) or a change here
-    if (document.activeElement !== $("stop-px")) $("stop-px").value = st.stop_size_px;
-    if (document.activeElement !== $("stop-in")) $("stop-in").value = toInches(st.stop_size_px) ?? "";
-  }
+  // The config value is unknown until server.py's first AI answer: the boxes show "?" until then,
+  // and a px typed meanwhile still applies. Inches need server.py's px_to_inches.
+  if (document.activeElement !== $("stop-px")) $("stop-px").value = st.stop_size_px ?? "";
+  if (document.activeElement !== $("stop-in")) $("stop-in").value = toInches(st.stop_size_px) ?? "";
+  $("stop-in").disabled = !st.px_to_inches;
+  $("stop-row").title = st.stop_size_px ? "" : "Turn on AI prediction to see the current value";
 
   const rec = st.recording;
   $("rec-badge").hidden = !rec;
