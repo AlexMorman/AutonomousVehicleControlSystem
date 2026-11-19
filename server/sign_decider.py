@@ -87,6 +87,8 @@ def decide_from_sign(sign, confidence, meta, box_px=0, stop_size_px=None):
     detected = sign
     if sign == "stop" and box_px and stop_size and box_px < stop_size:
         sign = None  # stop sign still far away: act as if there is no sign and keep driving
+    if sign != "stop":
+        sign = None  # only stop signs matter: every other class is treated as no sign
 
     if sign is not None and confidence >= MIN_CONFIDENCE:
         _last_sign, _last_seen = sign, now
